@@ -428,6 +428,8 @@ dialog button.btn:disabled{opacity:.5}
   <label for="edFile">Audio file</label><input id="edFile" type="file" accept="audio/*">
   <div class="hint" id="edFileName"></div>
   <label for="edStart">Start at (seconds) — skip the intro, jump to the chorus</label><input id="edStart" type="number" min="0" step="0.1" value="0">
+  <label for="edGain">Loudness boost / cut: <b id="edGainVal">0 dB</b></label><input id="edGain" type="range" min="-12" max="12" step="1" value="0">
+  <div class="hint">Raise quiet songs, lower loud ones. Applies every time this song plays.</div>
   <label class="chk"><span>Layer on top<small>Doesn't stop other audio — for horns &amp; effects</small></span><input id="edLayer" type="checkbox"></label>
   <label class="chk"><span>Loop</span><input id="edLoop" type="checkbox"></label>
   <div class="row"><button id="edLeft">◀ Earlier</button><button id="edTest">Test</button><button id="edRight">Later ▶</button></div>
@@ -623,11 +625,27 @@ function lookaheadIds() {
 }
 function lookahead() { lookaheadIds().forEach(id => { const pad = findPad(id); if (pad) audioFor(pad); }); }
 
+// Per-song loudness (pad.gain, dB). Cuts just scale element.volume; boosts above 0 dB need a Web Audio GainNode,
+// created only for songs that actually use one so normal playback stays on the plain <audio> path.
+let boostCtx = null;
+const padGain = a => Math.pow(10, ((a._pad && a._pad.gain) || 0) / 20);
+function setVol(a, v) {
+  const g = padGain(a);
+  if (g > 1 && !a._gn) {
+    try {
+      boostCtx = boostCtx || new (window.AudioContext || window.webkitAudioContext)();
+      a._gn = boostCtx.createGain();
+      boostCtx.createMediaElementSource(a).connect(a._gn); a._gn.connect(boostCtx.destination);
+    } catch (e) {}
+  }
+  if (a._gn) { if (boostCtx.state === 'suspended') boostCtx.resume().catch(() => {}); a._gn.gain.value = Math.max(1, g); }
+  a.volume = Math.min(1, v * Math.min(1, g));
+}
 // Fades are time-based (not step-counted) so a throttled background timer still finishes on schedule; hidden = no fade at all.
 function fadeOut(a, ms, keep) {
   clearInterval(a._fade);
   if (a.paused) { active.delete(a); return; }
-  const done = () => { clearInterval(a._fade); a._fade = null; a.pause(); a.volume = S.master; active.delete(a); if (current === a && !keep) current = null; if (a._once && !keep && a._pad) dropAudio(a._pad.id); refresh(); };
+  const done = () => { clearInterval(a._fade); a._fade = null; a.pause(); setVol(a, S.master); active.delete(a); if (current === a && !keep) current = null; if (a._once && !keep && a._pad) dropAudio(a._pad.id); refresh(); };
   if (document.hidden) { done(); return; }
   const v0 = a.volume, t0 = performance.now();
   a._fade = setInterval(() => {
@@ -639,13 +657,13 @@ function fadeOut(a, ms, keep) {
 // Short fade-in for songs that start mid-track, so they don't blast in. Same length as the next-song fade-out.
 function fadeIn(a, ms) {
   clearInterval(a._fade);
-  if (document.hidden) { a._fade = null; a.volume = S.master; return; }
+  if (document.hidden) { a._fade = null; setVol(a, S.master); return; }
   const t0 = performance.now();
   a.volume = 0;
   a._fade = setInterval(() => {
     const k = Math.min(1, (performance.now() - t0) / ms);
-    a.volume = S.master * k;
-    if (k >= 1) { clearInterval(a._fade); a._fade = null; a.volume = S.master; }
+    setVol(a, S.master * k);
+    if (k >= 1) { clearInterval(a._fade); a._fade = null; setVol(a, S.master); }
   }, 30);
 }
 // Stop button: fade out and pause, but keep the song loaded so Play resumes from the same spot.
@@ -655,7 +673,7 @@ function pauseCurrent() {
 }
 async function resumeCurrent() {
   const a = current; if (!a || !a.paused) return;
-  clearInterval(a._fade); a.volume = S.master;
+  clearInterval(a._fade); setVol(a, S.master);
   try { await a.play(); } catch (e) { toast('Tap again — browser blocked audio'); return; }
   active.add(a); keepAwake(); refresh();
 }
@@ -674,9 +692,9 @@ async function play(pad, fromQueue = false, fromStart = false) {
   clearInterval(a._fade); a._used = Date.now();
   a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
   const st = fromStart ? 0 : (pad.start || 0);
-  a.loop = !!pad.loop; a.volume = st > 0 ? 0 : S.master;
+  a.loop = !!pad.loop; setVol(a, S.master); if (st > 0) a.volume = 0;
   try { a.currentTime = st; } catch (e) {}
-  try { await a.play(); } catch (e) { a.volume = S.master; toast('Tap again — browser blocked audio'); return; }
+  try { await a.play(); } catch (e) { setVol(a, S.master); toast('Tap again — browser blocked audio'); return; }
   if (st > 0) fadeIn(a, 400);
   active.add(a);
   if (isTest) { refresh(); return; }
@@ -1178,7 +1196,7 @@ document.querySelectorAll('#view button').forEach(x => x.classList.toggle('on', 
 $('#mRestart').onclick = () => {
   setMore(false);   // jump to 0:00, ignoring the song's start-at point
   if (!current) return;
-  clearInterval(current._fade); current.volume = S.master;
+  clearInterval(current._fade); setVol(current, S.master);
   try { current.currentTime = 0; } catch (e) {}
   if (current.paused) current.play().then(() => { active.add(current); refresh(); }).catch(() => {});
 };
@@ -1239,7 +1257,7 @@ $('#nextBtn').onclick = next;
 $('#mQueue').onclick = () => { setMore(false); setQView(!qView); };
 $('#mShuffle').onclick = () => toggleShuffle(curBank());
 $('#qClear').onclick = () => { S.queue = []; save(); renderQueue(); renderGrid(); };
-$('#vol').oninput = e => { S.master = +e.target.value; active.forEach(a => { if (!a._fade) a.volume = S.master; }); };
+$('#vol').oninput = e => { S.master = +e.target.value; active.forEach(a => { if (!a._fade) setVol(a, S.master); }); };
 $('#vol').onchange = saveLocal;
 
 /* bank dialog */
@@ -1276,6 +1294,7 @@ function openEditor(p) {
   $('#edTitle').textContent = padIsNew ? 'New song' : 'Edit song';
   $('#edName').value = padEd.label; $('#edStart').value = padEd.start || 0;
   $('#edLayer').checked = !!padEd.layer; $('#edLoop').checked = !!padEd.loop;
+  $('#edGain').value = padEd.gain || 0; showGain();
   const sel = $('#edBank'); sel.innerHTML = '';
   S.banks.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; sel.appendChild(o); });
   sel.value = (bankOf(padEd.id) || curBank()).id;
@@ -1283,6 +1302,12 @@ function openEditor(p) {
   $('#edDel').style.display = padIsNew ? 'none' : ''; $('#edLeft').style.display = $('#edRight').style.display = padIsNew ? 'none' : '';
   $('#ed').showModal();
 }
+const showGain = () => { const g = +$('#edGain').value; $('#edGainVal').textContent = (g > 0 ? '+' : '') + g + ' dB'; };
+$('#edGain').oninput = () => {
+  showGain();
+  const t = [...active].find(x => x._pad && x._pad.id === '__test');   // live-adjust while testing
+  if (t) { t._pad.gain = +$('#edGain').value; setVol(t, S.master); }
+};
 $('#edFile').onchange = e => {
   pendingFile = e.target.files[0] || null;
   if (pendingFile) { $('#edFileName').textContent = pendingFile.name; if (!$('#edName').value.trim()) $('#edName').value = cleanName(pendingFile.name); }
@@ -1295,7 +1320,7 @@ $('#ed').addEventListener('close', async () => {
   [...active].filter(x => x._pad && x._pad.id === '__test').forEach(x => { clearInterval(x._fade); x.pause(); active.delete(x); });
   const held = testHeld; testHeld = [];
   for (const a of held) {
-    clearInterval(a._fade); a.volume = S.master;
+    clearInterval(a._fade); setVol(a, S.master);
     try { await a.play(); active.add(a); } catch (e) { toast('Tap play to resume'); }
   }
   if (held.length) { keepAwake(); refresh(); }
@@ -1304,6 +1329,7 @@ $('#edSave').onclick = async () => {
   padEd.label = $('#edName').value.trim() || 'Pad';
   padEd.start = Math.max(0, +$('#edStart').value || 0);
   padEd.layer = $('#edLayer').checked; padEd.loop = $('#edLoop').checked;
+  const g = +$('#edGain').value; if (g) padEd.gain = g; else delete padEd.gain;
   if (pendingFile) {
     const old = padEd.fileId; const id = await newFile(pendingFile);
     padEd.fileId = id;
@@ -1312,7 +1338,8 @@ $('#edSave').onclick = async () => {
   const tb = S.banks.find(x => x.id === $('#edBank').value) || curBank();
   if (padIsNew) tb.pads.push(padEd);
   else { const from = bankOf(padEd.id); if (from && from !== tb) { from.pads = from.pads.filter(x => x !== padEd); tb.pads.push(padEd); } }
-  save(); $('#ed').close(); render(); audioFor(padEd);
+  save(); $('#ed').close(); render();
+  audioFor(padEd).then(r => { if (r) { r.a._pad = padEd; if (active.has(r.a) && !r.a._fade) setVol(r.a, S.master); } });
 };
 // Copies in other banks share one audio file, so only delete it when no other pad still uses it.
 function dropFile(id, except) { if (id && !S.banks.some(b => b.pads.some(p => p !== except && p.fileId === id))) idbDel('files', id); }
@@ -1333,7 +1360,7 @@ $('#edTest').onclick = async () => {
   const playing = [...active].find(x => x._pad && x._pad.id === '__test');
   if (playing) { fadeOut(playing, 300); return; }   // Test again = stop; the next Test starts over
   if (!pendingFile && !padEd.fileId) return toast('Pick a file first');
-  const tmp = { ...padEd, id: '__test', start: +$('#edStart').value || 0, layer: false, loop: false };
+  const tmp = { ...padEd, id: '__test', start: +$('#edStart').value || 0, layer: false, loop: false, gain: +$('#edGain').value || 0 };
   if (pendingFile) { const id = await newFile(pendingFile); tmp.fileId = id; setTimeout(() => idbDel('files', id), 20000); }
   if (!testHeld.length) [...active].filter(x => !(x._pad && x._pad.id === '__test')).forEach(a => { clearInterval(a._fade); a.pause(); active.delete(a); testHeld.push(a); });
   dropAudio('__test'); await play(tmp);
