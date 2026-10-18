@@ -1,0 +1,11 @@
+services:
+  rink-deck:
+    build: .
+    container_name: rink-deck
+    restart: unless-stopped
+    ports:
+      - "8095:80"
+    volumes:
+      - /Users/dpw/Music/rink:/data # songs (data/audio) + library (data/state.json) — back this folder up
+    # Put this behind your reverse proxy with HTTPS (e.g. rink.walshma.us).
+    # Android only offers "Install app" over HTTPS.
