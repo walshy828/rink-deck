@@ -64,17 +64,17 @@ svg.i{display:block;flex:none}
 /* ---------- bank tabs: a coloured dot says what type of music the bank holds ---------- */
 #tabs{display:flex;gap:8px;overflow-x:auto;padding:8px 14px 6px;scrollbar-width:none}
 #tabs::-webkit-scrollbar{display:none}
-#tabs button{flex:none;display:flex;align-items:center;gap:8px;height:42px;padding:0 16px 0 13px;border-radius:21px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:15px;font-weight:600;white-space:nowrap;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .2s,color .2s,transform .15s}
-#tabs button .dot{width:10px;height:10px;border-radius:50%;background:rgb(var(--tk));box-shadow:0 0 10px rgba(var(--tk),.8)}
-#tabs button.on{color:#fff;background:linear-gradient(160deg,rgba(var(--tk),.55),rgba(var(--tk),.25));border-color:rgba(var(--tk),.9);box-shadow:0 4px 20px rgba(var(--tk),.35),inset 0 1px 0 rgba(255,255,255,.25)}
-#tabs button.add{border-style:dashed;padding:0 16px;color:var(--dim)}
+#tabs button{flex:none;display:flex;align-items:center;gap:8px;height:42px;padding:0 16px;border-radius:21px;border:1px solid rgba(var(--tk),.45);background:rgba(var(--tk),.2);color:var(--text);font-size:15px;font-weight:600;white-space:nowrap;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .2s,color .2s,transform .15s}
+#tabs button.on{color:#fff;background:linear-gradient(160deg,rgba(var(--tk),.95),rgba(var(--tk),.6));border-color:rgba(var(--tk),.9);box-shadow:0 4px 20px rgba(var(--tk),.35),inset 0 1px 0 rgba(255,255,255,.25)}
+#tabs button.add{border:1px dashed var(--line);background:var(--glass);padding:0 16px;color:var(--dim)}
 #tabs button.drop{transform:scale(1.08);background:rgba(var(--tk),.5);border-color:#fff}
 #tabs button svg{opacity:.85}
 
 #bkInfo{flex:1;min-width:0}
 #bkInfo .l1{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
 .kt{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:rgb(var(--k));filter:brightness(1.25)}
-.kt i{width:7px;height:7px;border-radius:50%;background:rgb(var(--k))}
+.kt i{width:7px;height:7px;border-radius:50%;background:rgb(var(--k));flex:none}
+.kt b{font:inherit;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 #bkInfo .l2{font-size:12px;color:var(--dim2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .seg{display:flex;padding:3px;border-radius:14px;background:rgba(0,0,0,.35);border:1px solid var(--line)}
 .seg button{border:0;background:transparent;color:var(--dim);padding:7px 16px;font-weight:700;font-size:13px;border-radius:11px;transition:background .2s,color .2s}
@@ -202,14 +202,21 @@ body.qv #qpanel{transform:none;opacity:1;pointer-events:auto}
 .rl li{position:relative;overflow:hidden;border-radius:16px;margin-bottom:7px;transition:transform .15s}
 .rl li.drag{z-index:5;transition:none;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:visible}
 .rl li .del{position:absolute;inset:0;background:var(--danger);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding-right:20px;border-radius:16px}
-.rl li .in{position:relative;display:flex;align-items:center;gap:8px;background:#262839;border:1px solid var(--line);border-radius:16px;padding:5px 8px 5px 0;touch-action:pan-y;transition:transform .15s;min-height:56px;overflow:hidden}
+.rl li .in{position:relative;display:flex;align-items:center;gap:4px;background:#262839;border:1px solid var(--line);border-radius:16px;padding:5px 8px 5px 0;touch-action:pan-y;transition:transform .15s;min-height:56px;overflow:hidden}
 .rl li.sw .in{transition:none}
 .rl li .kb{align-self:stretch;width:5px;background:rgb(var(--k));flex:none;margin-right:-2px}
-.rl li .n{flex:none;width:22px;text-align:center;color:var(--dim2);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
-.rl li .t{flex:1;min-width:0;display:flex;flex-direction:column}
-.rl li .t b{font-weight:650;font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.rl li .t small{font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:rgb(var(--k));filter:brightness(1.3)}
-.rl li .grip{flex:none;width:40px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--dim);touch-action:none;cursor:grab}
+.rl li .n{flex:none;width:16px;text-align:center;color:var(--dim2);font-weight:700;font-size:13px;font-variant-numeric:tabular-nums}
+.rl li .t{flex:1;min-width:0;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.25;overflow-wrap:anywhere}
+.rl li .t b{font-weight:650;font-size:15px}
+.rl li .t small{margin-left:6px;font-size:11px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;color:rgb(var(--k));filter:brightness(1.3)}
+.rl li .en{flex:none;display:inline-flex;align-items:flex-end;gap:2px;margin:0 10px 0 4px}
+.rl li .en i{width:4px;border-radius:1.5px;background:rgba(255,255,255,.25)}
+.rl li .en i:nth-child(1){height:5px}.rl li .en i:nth-child(2){height:7px}.rl li .en i:nth-child(3){height:9px}.rl li .en i:nth-child(4){height:11px}.rl li .en i:nth-child(5){height:13px}
+.rl li .en i.on{background:#fff}
+.qh .switch{width:44px;height:27px}
+.qh .switch::after{width:23px;height:23px}
+.qh .switch[aria-checked=true]::after{transform:translateX(17px)}
+.rl li .grip{flex:none;width:28px;height:44px;display:flex;align-items:center;justify-content:center;color:var(--dim);touch-action:none;cursor:grab}
 .rl li button{flex:none;border:0;background:var(--glass2);color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center}
 
 @media(min-width:900px){
@@ -253,6 +260,16 @@ body.qv #qpanel{transform:none;opacity:1;pointer-events:auto}
 .ctl .stop.idle{opacity:.4}
 .ctl .stop.resume{background:#fff}
 .ctl .next{flex:1;background:var(--glass2);color:#fff;border:1px solid var(--line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+/* energy of the playing song: five bars at the top right of the now-playing row; tap to open the 1-5 picker over the title */
+#npEn{flex:none;align-self:flex-start;margin:-6px -8px 0 0;position:relative}
+#npEn .bars{display:flex;align-items:flex-end;gap:3px;height:44px;min-width:44px;padding:0 8px 12px;border:0;background:transparent;border-radius:14px}
+#npEn .bars:active{background:rgba(255,255,255,.1)}
+#npEn .bars i{width:4px;border-radius:1.5px;background:rgba(255,255,255,.25)}
+#npEn .bars i:nth-child(1){height:6px}#npEn .bars i:nth-child(2){height:10px}#npEn .bars i:nth-child(3){height:14px}#npEn .bars i:nth-child(4){height:18px}#npEn .bars i:nth-child(5){height:22px}
+#npEn .bars i.on{background:#fff}
+#npEn .pick{position:absolute;right:0;top:0;display:flex;gap:6px;padding:6px;border-radius:22px;z-index:5;background:rgba(36,38,56,.96);animation:pop .16s ease-out;transform-origin:top right}
+#npEn .pick button{flex:none;width:40px;height:40px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:15px;font-weight:700}
+#npEn .pick button.on{background:#fff;color:#000;border-color:#fff}
 /* tap the song title for volume, energy, shuffle, Up Next and per-song options */
 .qc{min-width:22px;height:22px;border-radius:11px;background:var(--cue);color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 6px}
 .np.on{background:rgba(255,255,255,.1)}
@@ -319,10 +336,12 @@ dialog .inline input{flex:1;min-width:0}
 dialog button.btn{border:0;border-radius:14px;padding:11px 16px;font-size:15px;font-weight:650;background:var(--glass2);color:#fff}
 dialog button.btn.primary{background:#fff;color:#000}
 dialog button.btn:disabled{opacity:.5}
-.kinds{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.kinds button{display:flex;align-items:center;gap:10px;padding:12px 12px;border-radius:16px;border:1.5px solid var(--line);background:rgba(0,0,0,.22);color:var(--text);font-size:14px;font-weight:650;text-align:left}
-.kinds button i{width:14px;height:14px;border-radius:50%;background:rgb(var(--tk));box-shadow:0 0 12px rgba(var(--tk),.8);flex:none}
-.kinds button.on{border-color:rgb(var(--tk));background:rgba(var(--tk),.25)}
+.swatches{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+.swatches button,.swatches .custom{aspect-ratio:1;border-radius:50%;border:3px solid transparent;background:rgb(var(--tk));box-shadow:0 0 0 1px var(--line),0 0 12px rgba(var(--tk),.55);padding:0;position:relative;overflow:hidden}
+.swatches button.on,.swatches .custom.on{border-color:#fff}
+.swatches .custom{background:conic-gradient(#ff453a,#ff9f0a,#ffd60a,#30d158,#0a84ff,#bf5af2,#ff453a)}
+.swatches .custom.on{background:rgb(var(--tk))}
+.swatches .custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:0;cursor:pointer}
 #sdOut{margin-top:14px}
 #sdOut .sum{font-size:14px;margin-bottom:6px}
 #sdOut .ir{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
@@ -358,11 +377,9 @@ dialog button.btn:disabled{opacity:.5}
     <main id="grid"></main>
     <section id="qpanel" class="glass" aria-label="Up Next">
       <div class="grab"></div>
-      <div class="qh"><h4>Up Next</h4><button id="qClear" class="txtbtn">Clear</button><button id="qClose" class="ib sm" aria-label="Close" data-ic="chevdown"></button></div>
-      <div class="hint" id="qEmpty">Nothing cued. Switch to <b>Cue</b> mode and tap songs, or hold a song and choose Add to Up Next.</div>
+      <div class="qh"><h4>Up Next</h4><button id="qClear" class="txtbtn">Clear</button><button id="shToggle" class="switch" role="switch" aria-checked="false" aria-label="Shuffle this bank"></button><button id="qClose" class="ib sm" aria-label="Close" data-ic="chevdown"></button></div>
       <ul id="qlist" class="rl"></ul>
-      <div class="qh sec"><h4 id="shTitle">Shuffle</h4><button id="shToggle" class="switch" role="switch" aria-checked="false" aria-label="Shuffle this bank"></button></div>
-      <div class="hint" id="shNote">Plays when Up Next runs out. Drag to reorder, swipe left to remove a song from this queue (it can come back later), the dice re-rolls a pick. Scroll for more.</div>
+      <div class="qh sec"><h4 id="shTitle">Shuffle</h4></div>
       <ul id="shlist" class="rl" style="margin-top:10px"></ul>
       <div id="shMore" style="height:1px"></div>
     </section>
@@ -371,6 +388,7 @@ dialog button.btn:disabled{opacity:.5}
     <div class="np" id="npTap" role="button" tabindex="0" aria-label="Song options" aria-haspopup="true" aria-expanded="false">
       <div class="art"><span class="ic" data-ic="music" data-sz="26"></span><span class="eq"><i></i><i></i><i></i></span></div>
       <div class="nm"><div id="npKind">Ready</div><div id="npName">Nothing playing</div><div id="npNext"></div></div>
+      <div id="npEn" hidden></div>
     </div>
     <div class="prog2"><span id="tCur"></span><div id="bar"><i></i></div><span id="npTime"></span></div>
     <div class="ctl">
@@ -419,7 +437,7 @@ dialog button.btn:disabled{opacity:.5}
 <dialog id="bd">
   <h3>Bank</h3>
   <label for="bdName">Name</label><input id="bdName" type="text" maxlength="20" autocomplete="off">
-  <label>Type — sets the colour of the bank and its songs</label><div class="kinds" id="bdKinds"></div>
+  <label>Colour — used for the bank and its songs</label><div class="swatches" id="bdKinds"></div>
   <div class="row"><button id="bdLeft">◀ Earlier</button><button id="bdRight">Later ▶</button></div>
   <div class="row"><button id="bdDel" class="danger">Delete</button><button id="bdCancel">Cancel</button><button id="bdSave" class="primary">Save</button></div>
 </dialog>
@@ -469,6 +487,8 @@ const ICONS = {
   repeat: '<path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/>',
   layers: '<path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>',
   bolt: '*<path d="M13 2 3 14h8l-1 8 10-12h-8Z"/>',
+  toTop: '<path d="M5 4h14"/><path d="m6 14 6-6 6 6"/><path d="M12 8v12"/>',
+  toBottom: '<path d="M5 20h14"/><path d="m6 10 6 6 6-6"/><path d="M12 16V4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
   chevdown: '<path d="m6 9 6 6 6-6"/>',
@@ -488,18 +508,15 @@ const ICONS = {
 const ic = (n, sz = 20) => { const d = ICONS[n] || '', f = d[0] === '*'; return '<svg class="i" viewBox="0 0 24 24" width="' + sz + '" height="' + sz + '" fill="' + (f ? 'currentColor' : 'none') + '" stroke="' + (f ? 'none' : 'currentColor') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (f ? d.slice(1) : d) + '</svg>'; };
 document.querySelectorAll('[data-ic]').forEach(e => e.insertAdjacentHTML('afterbegin', ic(e.dataset.ic, +e.dataset.sz || 20)));
 
-/* ---------- bank types: the one place colour carries meaning ---------- */
-const KINDS = {
-  goal:         { n: 'Goal',         rgb: '255,69,58' },
-  hype:         { n: 'Pump-up',      rgb: '191,90,242' },
-  stoppage:     { n: 'Stoppage',     rgb: '255,159,10' },
-  warmup:       { n: 'Warm-up',      rgb: '48,209,88' },
-  intermission: { n: 'Intermission', rgb: '10,132,255' },
-  other:        { n: 'Other',        rgb: '142,152,176' }
-};
+/* ---------- bank colour: each bank has its own colour (bank.color = "r,g,b") ---------- */
+const PALETTE = ['255,69,58', '255,159,10', '255,214,10', '48,209,88', '64,200,224', '10,132,255', '94,92,230', '191,90,242', '255,55,95', '142,152,176'];
+// Banks saved before colours were chosen directly carried a "kind"; map it (or a guess from the name) to a colour.
+const LEGACY = { goal: '255,69,58', hype: '191,90,242', stoppage: '255,159,10', warmup: '48,209,88', intermission: '10,132,255', other: '142,152,176' };
 const guessKind = n => /goal|score|horn|win/i.test(n) ? 'goal' : /inter|period|between/i.test(n) ? 'intermission' : /warm/i.test(n) ? 'warmup' : /pump|hype|rally|power|walk/i.test(n) ? 'hype' : /stop|whistle|timeout|tv|break|penalt/i.test(n) ? 'stoppage' : 'other';
-const kindKey = b => (b && KINDS[b.kind]) ? b.kind : guessKind(b ? b.name : '');
-const kindOf = b => KINDS[kindKey(b)];
+const RGB_RE = /^\d{1,3},\d{1,3},\d{1,3}$/;
+const bankRgb = b => (b && RGB_RE.test(b.color || '')) ? b.color : LEGACY[b && LEGACY[b.kind] ? b.kind : guessKind(b ? b.name : '')];
+const hexToRgb = h => [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)).join(',');
+const rgbToHex = c => '#' + c.split(',').map(v => (+v).toString(16).padStart(2, '0')).join('');
 
 /* ---------- storage (IndexedDB, in-memory fallback) ---------- */
 const mem = { files: new Map(), meta: new Map() };
@@ -692,7 +709,7 @@ const bankOf = id => S.banks.find(b => b.pads.some(p => p.id === id)) || null;
 const shPool = b => b.pads.filter(p => p.fileId && (p.energy || 0) >= (b.minE || 0));
 // Energy: pad.energy = 1-5 (unset = unrated). bank.minE = shuffle only picks songs rated at least this (0 = any; unrated songs are left out while a filter is on).
 function setEnergy(p, n) { p.energy = (p.energy === n) ? 0 : n; save(); const b = bankOf(p.id); if (b) { shFill(b); } renderGrid(); renderQueue(); toast(p.energy ? 'Energy ' + p.energy + ': ' + p.label : 'Energy cleared: ' + p.label); }
-const eOpen = { hdr: false };
+const eOpen = { hdr: false, np: false };
 // opts: [{n, txt}], cur: selected n (0 = none). Closed = bolt (+ value if set); open = bolt + the choices.
 function echip(host, key, cur, opts, label, pick) {
   host.innerHTML = '';
@@ -717,7 +734,19 @@ function renderEchips() {
     if (n === (b.minE || 0)) return;
     b.minE = n; b.up = []; shFill(b); save(); render(); toast(n ? 'Shuffle: energy ' + n + '+ only' : 'Shuffle: any energy');
   });
-  const rp = current && current._pad && findPad(current._pad.id), d = $('#mEn');
+  const rp = current && current._pad && findPad(current._pad.id), d = $('#mEn'), ne = $('#npEn');
+  ne.hidden = !rp; ne.innerHTML = '';
+  if (!rp) eOpen.np = false;
+  else if (!eOpen.np) {
+    const bt = document.createElement('button'); bt.className = 'bars'; bt.setAttribute('aria-label', rp.energy ? 'Energy ' + rp.energy + ' of 5, change' : 'Set energy');
+    bt.innerHTML = [1, 2, 3, 4, 5].map(n => '<i' + (n <= (rp.energy || 0) ? ' class="on"' : '') + '></i>').join('');
+    bt.onclick = e => { e.stopPropagation(); setMore(false); eOpen.np = true; renderEchips(); };
+    ne.appendChild(bt);
+  } else {
+    const pk = document.createElement('div'); pk.className = 'pick glass';
+    [1, 2, 3, 4, 5].forEach(n => { const x = document.createElement('button'); x.textContent = n; x.setAttribute('aria-label', 'Energy ' + n); if (rp.energy === n) x.classList.add('on'); x.onclick = e => { e.stopPropagation(); eOpen.np = false; setEnergy(rp, n); renderEchips(); }; pk.appendChild(x); });
+    ne.appendChild(pk);
+  }
   d.hidden = !rp; d.innerHTML = '';
   if (rp) {
     d.innerHTML = '<span>' + ic('bolt', 18) + 'Energy</span>';
@@ -725,7 +754,7 @@ function renderEchips() {
   }
 }
 document.addEventListener('pointerdown', e => {
-  if (eOpen.hdr && !e.target.closest('#eChip')) { eOpen.hdr = false; renderEchips(); }
+  if ((eOpen.hdr && !e.target.closest('#eChip')) || (eOpen.np && !e.target.closest('#npEn'))) { if (!e.target.closest('#eChip')) eOpen.hdr = false; eOpen.np = false; renderEchips(); }
   if (!$('#moreMenu').hidden && !e.target.closest('#moreMenu,#npTap')) setMore(false);
 }, true);
 // The "home" shuffle bank: the shuffle bank you last used. Songs from other banks (goal, intermission) play on top, then shuffle resumes here.
@@ -784,8 +813,7 @@ function renderTabs() {
   const t = $('#tabs'); t.innerHTML = '';
   S.banks.forEach((b, i) => {
     const el = document.createElement('button'); el.dataset.bank = i;
-    el.style.setProperty('--tk', kindOf(b).rgb);
-    el.innerHTML = '<i class="dot"></i>';
+    el.style.setProperty('--tk', bankRgb(b));
     el.append(b.name);
     if (b.shuffle) el.insertAdjacentHTML('beforeend', ic('shuffle', 14));
     if (editing && i === S.bank) el.insertAdjacentHTML('beforeend', ic('pencil', 14));
@@ -793,17 +821,17 @@ function renderTabs() {
     el.onclick = () => { setQView(false); if (i === S.bank && editing) return openBank(b); S.bank = i; saveLocal(); warm(b); render(); };
     t.appendChild(el);
   });
-  if (editing) { const a = document.createElement('button'); a.className = 'add'; a.innerHTML = ic('plus', 16) + 'Bank'; a.onclick = () => { S.banks.push({ id: uid(), name: 'New bank', kind: 'other', pads: [] }); S.bank = S.banks.length - 1; save(); render(); openBank(curBank()); }; t.appendChild(a); }
+  if (editing) { const a = document.createElement('button'); a.className = 'add'; a.innerHTML = ic('plus', 16) + 'Bank'; a.onclick = () => { S.banks.push({ id: uid(), name: 'New bank', color: PALETTE[5], pads: [] }); S.bank = S.banks.length - 1; save(); render(); openBank(curBank()); }; t.appendChild(a); }
   const on = t.querySelector('.on'); if (on && on.scrollIntoView) on.scrollIntoView({ inline: 'nearest', block: 'nearest' });
 }
 function renderBankBar() {
-  const b = curBank(), k = kindOf(b), n = b.pads.length;
-  document.body.style.setProperty('--k', k.rgb);
+  const b = curBank(), n = b.pads.length;
+  document.body.style.setProperty('--k', bankRgb(b));
   const hint = editing ? 'Drag ⠿ to reorder or move'
     : view === 'list' && mode !== 'queue' ? 'Drag ⠿ to reorder'
     : mode === 'queue' ? 'Taps add to Up Next' : 'Hold a song for options';
-  $('#bkInfo').innerHTML = '<div class="l1"><span class="kt"><i></i>' + k.n + '</span><span>' + n + (n === 1 ? ' song' : ' songs') + '</span></div><div class="l2"></div>';
-  $('#bkInfo .l2').textContent = hint;
+  $('#bkInfo').innerHTML = '<div class="l1"><span class="kt"><i></i><b></b></span><span>' + n + (n === 1 ? ' song' : ' songs') + '</span></div><div class="l2"></div>';
+  $('#bkInfo .kt b').textContent = b.name; $('#bkInfo .l2').textContent = hint;
 }
 function padEl(p, b) {
   const el = document.createElement('button'); el.className = 'pad'; el.dataset.id = p.id;
@@ -886,6 +914,13 @@ function movePadTo(p, bank) {
   from.pads = from.pads.filter(x => x !== p); bank.pads.push(p);
   save(); render(); toast('Moved “' + p.label + '” to ' + bank.name);
 }
+function movePadEdge(p, top) {
+  const b = bankOf(p.id); if (!b) return;
+  b.pads = b.pads.filter(x => x !== p); top ? b.pads.unshift(p) : b.pads.push(p);
+  save(); renderGrid();
+  const el = $('#grid').querySelector('.pad[data-id="' + p.id + '"]'); if (el) el.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  toast('Moved “' + p.label + '” to ' + (top ? 'top' : 'bottom'));
+}
 function renderGrid() {
   const g = $('#grid'); g.innerHTML = ''; const b = curBank();
   const q = query.trim().toLowerCase();
@@ -911,8 +946,8 @@ function qRows(ul, ids, o) {
     const p = findPad(id); if (!p) return;
     const li = document.createElement('li');
     const pb = bankOf(id) || curBank();
-    li.style.setProperty('--k', kindOf(pb).rgb);
-    li.innerHTML = '<div class="del">' + (o.delTxt || 'Remove') + '</div><div class="in"><i class="kb"></i><b class="grip" aria-label="Drag to reorder">' + ic('grip', 18) + '</b><span class="n"></span><span class="t"><b></b><small></small></span></div>';
+    li.style.setProperty('--k', bankRgb(pb));
+    li.innerHTML = '<div class="del">' + (o.delTxt || 'Remove') + '</div><div class="in"><i class="kb"></i><b class="grip" aria-label="Drag to reorder">' + ic('grip', 18) + '</b><span class="n"></span><span class="t"><b></b><small></small></span>' + (p.energy ? '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>' : '') + '</div>';
     const inn = li.querySelector('.in'), grip = li.querySelector('.grip');
     li.querySelector('.n').textContent = i + 1;
     li.querySelector('.t b').textContent = p.label;
@@ -970,7 +1005,6 @@ function renderQueue() {
   $('#npNext').textContent = np ? (S.queue.length ? 'Up next: ' : 'Shuffle next: ') + np.label : 'Nothing cued';
   if (!qOpen() || qDrag) return;
   S.queue = S.queue.filter(findPad);
-  $('#qEmpty').style.display = S.queue.length ? 'none' : '';
   const ql = $('#qlist'); ql.innerHTML = '';
   qRows(ql, S.queue, {
     delTxt: 'Remove',
@@ -981,16 +1015,14 @@ function renderQueue() {
   renderShuffle(b);
 }
 function renderShuffle(b) {
-  $('#shTitle').innerHTML = '<i class="dot" style="--k:' + kindOf(b).rgb + '"></i>'; $('#shTitle').append('Shuffle · ' + b.name);
+  $('#shTitle').innerHTML = '<i class="dot" style="--k:' + bankRgb(b) + '"></i>'; $('#shTitle').append('Shuffle · ' + b.name);
   $('#shToggle').setAttribute('aria-checked', !!b.shuffle);
   $('#shToggle').onclick = () => toggleShuffle(b); shMoreBank = b;
-  $('#shNote').style.display = b.shuffle ? '' : 'none';
   const ul = $('#shlist'); ul.innerHTML = '';
   if (!b.shuffle) return;
   if (!b.up.length) { const li = document.createElement('li'); li.innerHTML = '<span class="hint">No songs available to shuffle in this bank.</span>'; ul.appendChild(li); }
   qRows(ul, b.up, {
     delTxt: 'Skip',
-    extra: [{ ic: 'dice', label: 'Re-roll this pick', fn: (i) => { const n = shPick(b, b.up); if (!n) return toast('No other songs to pick'); b.up[i] = n; shFill(b); save(); renderQueue(); } }],
     onPlay: (i, id, p) => playNow(p),
     onDelete: (i, id, p) => { b.up.splice(i, 1); toast('Removed from queue: ' + p.label); shFill(b); save(); renderQueue(); },
     onMove: (from, to) => { moveIn(b.up, from, to); save(); }
@@ -1026,10 +1058,10 @@ function refresh() {
   curEl = cid ? document.querySelector('.pad[data-id="' + cid + '"]') : null;
   const paused = !!current && current.paused && !active.has(current);
   const cb = cp && bankOf(cp.id), dock = $('#dock');
-  dock.style.setProperty('--pk', cb ? kindOf(cb).rgb : '150,155,175');
+  dock.style.setProperty('--pk', cb ? bankRgb(cb) : '150,155,175');
   dock.classList.toggle('on', !!cp && !paused);
   dock.classList.toggle('paused', !!cp && paused);
-  $('#npKind').textContent = cp ? (cb ? kindOf(cb).n : 'Preview') + ' · ' + (paused ? 'Paused' : 'Playing') : 'Ready';
+  $('#npKind').textContent = cp ? (cb ? cb.name : 'Preview') + ' · ' + (paused ? 'Paused' : 'Playing') : 'Ready';
   $('#npName').textContent = cp ? cp.label : 'Nothing playing';
   $('#mRestart').hidden = !current; $('#mEdit').hidden = !(cp && findPad(cp.id));
   renderEchips();
@@ -1071,6 +1103,9 @@ function openPadMenu(p, el) {
   if (p.fileId && p.start > 0) add('back', 'Play from start', () => play(p, false, true));
   if (S.banks.length > 1) add('copy', 'Add to another bank…', () => openCopyMenu(p, el));
   add('pencil', 'Edit', () => openEditor(p));
+  const arr = (bankOf(p.id) || curBank()).pads, pi = arr.indexOf(p);
+  if (pi > 0) add('toTop', 'Move to top', () => movePadEdge(p, true));
+  if (pi >= 0 && pi < arr.length - 1) add('toBottom', 'Move to bottom', () => movePadEdge(p, false));
   const er = document.createElement('div'); er.className = 'er'; const el0 = document.createElement('span'); el0.innerHTML = ic('bolt', 13) + 'Energy'; er.appendChild(el0);
   [1, 2, 3, 4, 5].forEach(n => { const b = document.createElement('button'); b.textContent = n; if (p.energy === n) b.classList.add('on'); b.onclick = () => { closePadMenu(); setEnergy(p, n); }; er.appendChild(b); });
   m.appendChild(er);
@@ -1085,7 +1120,7 @@ function openCopyMenu(p, el) {
   S.banks.forEach(b => {
     if (b === bankOf(p.id)) return;
     const btn = document.createElement('button'); const dup = b.pads.some(x => p.fileId ? x.fileId === p.fileId : x.label === p.label);
-    btn.innerHTML = '<i style="width:12px;height:12px;border-radius:50%;flex:none;background:rgb(' + kindOf(b).rgb + ')"></i>';
+    btn.innerHTML = '<i style="width:12px;height:12px;border-radius:50%;flex:none;background:rgb(' + bankRgb(b) + ')"></i>';
     btn.append(b.name + (dup ? '  ✓ already there' : ''));
     btn.onclick = () => { closePadMenu(); copyPad(p, b); };
     m.appendChild(btn);
@@ -1141,6 +1176,22 @@ $('#mRestart').onclick = () => {
 $('#mEdit').onclick = () => { setMore(false); const p = current && current._pad && findPad(current._pad.id); if (p) openEditor(p); };
 $('#stopBtn').onclick = () => { if (current && current.paused && !active.has(current)) resumeCurrent(); else pauseCurrent(); };
 // tapping the song (art + title) opens the options menu; play/stop lives on the Stop/Play button
+// phones: swipe up on the dock opens Up Next, swipe down on the open sheet closes it
+(() => {
+  let t0 = null;
+  const start = e => { t0 = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, el: e.target } : null; };
+  const dy = e => { const t = e.changedTouches[0]; return t0 && Math.abs(t.clientY - t0.y) > Math.abs(t.clientX - t0.x) ? t.clientY - t0.y : 0; };
+  $('#dock').addEventListener('touchstart', start, { passive: true });
+  $('#dock').addEventListener('touchend', e => {
+    const d = dy(e); if (!t0 || wide.matches || t0.el.closest('#bar,#moreMenu,#npEn')) return;
+    if (d < -40 && !qView) { setQView(true); }
+  }, { passive: true });
+  $('#qpanel').addEventListener('touchstart', start, { passive: true });
+  $('#qpanel').addEventListener('touchend', e => {
+    const d = dy(e); if (!t0 || wide.matches || qDrag || t0.el.closest('.grip')) return;
+    if (d > 60 && $('#qpanel').scrollTop <= 0) setQView(false);
+  }, { passive: true });
+})();
 $('#npTap').onclick = () => setMore($('#moreMenu').hidden);
 $('#npTap').onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.target === e.currentTarget) { e.preventDefault(); e.currentTarget.click(); } };
 /* seek: tap or drag the progress bar */
@@ -1152,7 +1203,17 @@ $('#npTap').onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.tar
     try { a.currentTime = f * a.duration; } catch (x) {}
     $('#bar i').style.width = (f * 100) + '%';
   };
-  bar.onpointerdown = e => { drag = true; bar.setPointerCapture(e.pointerId); seek(e); };
+  // arrow keys nudge ±3s while the bar is focused (focus it by clicking or dragging)
+  bar.tabIndex = 0; bar.setAttribute('role', 'slider'); bar.setAttribute('aria-label', 'Seek');
+  bar.onkeydown = e => {
+    const d = e.key === 'ArrowRight' ? 3 : e.key === 'ArrowLeft' ? -3 : 0;
+    const a = current; if (!d || !a || !a.duration) return;
+    e.preventDefault();
+    const t = Math.min(a.duration, Math.max(0, a.currentTime + d));
+    try { a.currentTime = t; } catch (x) {}
+    $('#bar i').style.width = (t / a.duration * 100) + '%';
+  };
+  bar.onpointerdown = e => { drag = true; bar.focus({ preventScroll: true }); bar.setPointerCapture(e.pointerId); seek(e); };
   bar.onpointermove = e => { if (drag) seek(e); };
   bar.onpointerup = bar.onpointercancel = () => { drag = false; };
 })();
@@ -1173,14 +1234,18 @@ $('#vol').oninput = e => { S.master = +e.target.value; active.forEach(a => { if 
 $('#vol').onchange = saveLocal;
 
 /* bank dialog */
-let bankEd = null, pendingKind = 'other';
+let bankEd = null, pendingColor = PALETTE[5];
 function buildKinds() {
   const w = $('#bdKinds'); w.innerHTML = '';
-  Object.entries(KINDS).forEach(([k, v]) => { const b = document.createElement('button'); b.style.setProperty('--tk', v.rgb); b.innerHTML = '<i></i>'; b.append(v.n); if (k === pendingKind) b.classList.add('on'); b.onclick = () => { pendingKind = k; buildKinds(); }; w.appendChild(b); });
+  PALETTE.forEach(c => { const b = document.createElement('button'); b.style.setProperty('--tk', c); b.setAttribute('aria-label', 'Colour ' + c); if (c === pendingColor) b.classList.add('on'); b.onclick = () => { pendingColor = c; buildKinds(); }; w.appendChild(b); });
+  const l = document.createElement('label'); l.className = 'custom' + (PALETTE.includes(pendingColor) ? '' : ' on'); l.style.setProperty('--tk', pendingColor); l.title = 'Custom colour';
+  l.innerHTML = '<input type="color" aria-label="Custom colour">'; const inp = l.firstChild; inp.value = rgbToHex(pendingColor);
+  inp.oninput = () => { pendingColor = hexToRgb(inp.value); l.style.setProperty('--tk', pendingColor); l.classList.add('on'); w.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); };
+  w.appendChild(l);
 }
-function openBank(b) { bankEd = b; pendingKind = kindKey(b); buildKinds(); $('#bdName').value = b.name; $('#bdDel').style.display = S.banks.length > 1 ? '' : 'none'; $('#bd').showModal(); }
+function openBank(b) { bankEd = b; pendingColor = bankRgb(b); buildKinds(); $('#bdName').value = b.name; $('#bdDel').style.display = S.banks.length > 1 ? '' : 'none'; $('#bd').showModal(); }
 $('#bdCancel').onclick = () => $('#bd').close();
-$('#bdSave').onclick = () => { bankEd.name = $('#bdName').value.trim() || 'Bank'; bankEd.kind = pendingKind; save(); $('#bd').close(); render(); };
+$('#bdSave').onclick = () => { bankEd.name = $('#bdName').value.trim() || 'Bank'; bankEd.color = pendingColor; delete bankEd.kind; save(); $('#bd').close(); render(); };
 function moveBank(d) {
   const i = S.banks.indexOf(bankEd), j = i + d; if (j < 0 || j >= S.banks.length) return;
   const cur = curBank(); [S.banks[i], S.banks[j]] = [S.banks[j], S.banks[i]]; S.bank = S.banks.indexOf(cur); save(); renderTabs();
