@@ -20,6 +20,8 @@ const ID_RE = /^[a-z0-9]{4,32}$/;
 const TMP = path.join(DATA, 'tmp');
 const YTDLP = process.env.YTDLP || 'yt-dlp';
 const MAX_DURATION = +process.env.MAX_DURATION || 1200;   // seconds; refuses hour-long mixes
+const MUSIC = process.env.MUSIC_DIR || '/music';            // read-only mount of the shared music library
+const AUDIO_TYPES = { mp3: 'audio/mpeg', m4a: 'audio/mp4', aac: 'audio/aac', flac: 'audio/flac', ogg: 'audio/ogg', oga: 'audio/ogg', opus: 'audio/ogg', wav: 'audio/wav' };
 const YT_HOST = /^(www\.|m\.|music\.)?(youtube\.com|youtu\.be)$/i;
 
 const STATIC = {
@@ -180,9 +182,96 @@ async function handleYt(req, res, p) {
   send(res, 404, 'not found');
 }
 
+/* ---------- shared music library (read-only mount) ---------- */
+// Layout is usually <Artist>/<Album>/<NN - Song>.mp3, so artist/album/title come from the path for searching;
+// real tags (ffprobe) are read only for the songs that actually get imported.
+let musicIdx = [], musicState = { scanning: false, at: null, error: null };
+const extOf = n => path.extname(n).slice(1).toLowerCase();
+const tidyFile = n => path.basename(n, path.extname(n)).replace(/_/g, ' ').replace(/^\s*\d{1,3}\s*[-._)]\s*|^\s*\d{1,3}\s+(?=\D)/, '').trim();
+
+async function scanMusic() {
+  if (musicState.scanning) return;
+  musicState = { scanning: true, at: musicState.at, error: null };
+  const out = [], stack = [''];
+  try {
+    await fsp.access(MUSIC);
+    while (stack.length) {
+      const rel = stack.pop();
+      for (const d of await fsp.readdir(path.join(MUSIC, rel), { withFileTypes: true })) {
+        if (d.name.startsWith('.')) continue;                    // dotfiles, macOS ._ shadows, .AppleDouble
+        const r = rel ? rel + '/' + d.name : d.name;
+        if (d.isDirectory()) stack.push(r);
+        else if (d.isFile() && AUDIO_TYPES[extOf(d.name)]) {
+          const parts = r.split('/'), title = tidyFile(d.name) || d.name;
+          const artist = parts.length > 1 ? parts[0] : '', album = parts.length > 2 ? parts[parts.length - 2] : '';
+          out.push({ p: r, title, artist, album, hay: (title + ' ' + parts.join(' ')).toLowerCase() });
+        }
+      }
+    }
+    musicIdx = out;
+    musicState = { scanning: false, at: Date.now(), error: null };
+  } catch (e) {
+    musicState = { scanning: false, at: musicState.at, error: e.code === 'ENOENT' ? 'Music folder is not mounted at ' + MUSIC : e.message };
+  }
+}
+
+function searchMusic(q) {
+  const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  if (!terms.length) return [];
+  const whole = terms.join(' '), hits = [];
+  for (const e of musicIdx) {
+    if (!terms.every(t => e.hay.includes(t))) continue;
+    const tl = e.title.toLowerCase();
+    hits.push({ e, score: tl === whole ? 0 : tl.startsWith(whole) ? 1 : tl.includes(whole) ? 2 : e.artist.toLowerCase().includes(whole) ? 3 : 4 });
+  }
+  hits.sort((a, b) => a.score - b.score || a.e.artist.localeCompare(b.e.artist) || a.e.p.localeCompare(b.e.p));
+  return hits.slice(0, 60).map(h => ({ path: h.e.p, title: h.e.title, artist: h.e.artist, album: h.e.album }));
+}
+
+const probeTags = file => new Promise(resolve => {
+  execFile('ffprobe', ['-v', 'quiet', '-print_format', 'json', '-show_entries', 'format_tags', file], { timeout: 15000 }, (err, out) => {
+    if (err) return resolve({});
+    try {
+      const raw = JSON.parse(out).format.tags || {}, t = {};
+      for (const k of Object.keys(raw)) t[k.toLowerCase()] = String(raw[k]).trim();
+      resolve({ title: t.title, artist: t.artist || t.album_artist, album: t.album });
+    } catch (e) { resolve({}); }
+  });
+});
+
+async function handleMusic(req, res, p, url) {
+  if (p === '/api/music/status' && req.method === 'GET') {
+    if (!musicState.at && !musicState.scanning && !musicState.error) scanMusic();
+    return send(res, 200, { ok: !musicState.error, error: musicState.error, count: musicIdx.length, scanning: musicState.scanning, at: musicState.at });
+  }
+  if (p === '/api/music/rescan' && req.method === 'POST') {
+    await scanMusic();
+    return send(res, 200, { ok: !musicState.error, error: musicState.error, count: musicIdx.length });
+  }
+  if (p === '/api/music/search' && req.method === 'GET') return send(res, 200, searchMusic(url.searchParams.get('q')));
+  if (p === '/api/music/import' && req.method === 'POST') {
+    let b; try { b = JSON.parse((await readBody(req, 1e5)).toString()); } catch (e) { return send(res, 400, 'bad json'); }
+    const rel = String((b && b.path) || '');
+    // Only paths we indexed; also resolve symlinks so nothing outside the mount can be read.
+    if (!musicIdx.some(e => e.p === rel)) return send(res, 404, 'not in library');
+    let src; try { src = await fsp.realpath(path.join(MUSIC, rel)); } catch (e) { return send(res, 404, 'file missing'); }
+    if (!src.startsWith((await fsp.realpath(MUSIC)) + path.sep)) return send(res, 403, 'outside library');
+    const id = crypto.randomBytes(5).toString('hex'), dst = path.join(AUDIO, id), tmp = dst + '.' + process.pid + '.tmp';
+    try {
+      await fsp.copyFile(src, tmp);
+      await fsp.rename(tmp, dst);
+      await fsp.writeFile(dst + '.type', AUDIO_TYPES[extOf(src)] || 'application/octet-stream');
+    } catch (e) { fsp.unlink(tmp).catch(() => {}); return send(res, 500, 'copy failed'); }
+    const tags = await probeTags(src), entry = musicIdx.find(e => e.p === rel);
+    return send(res, 200, { id, title: tags.title || entry.title, artist: tags.artist || entry.artist, album: tags.album || entry.album });
+  }
+  send(res, 404, 'not found');
+}
+
 async function handleApi(req, res, url) {
   const p = url.pathname;
   if (p.startsWith('/api/yt/')) return handleYt(req, res, p);
+  if (p.startsWith('/api/music/')) return handleMusic(req, res, p, url);
   if (p === '/api/state') {
     if (req.method === 'GET') return send(res, 200, lib);
     if (req.method === 'PUT') {
@@ -234,4 +323,4 @@ http.createServer(async (req, res) => {
   } catch (e) {
     if (!res.headersSent) send(res, 500, 'server error'); else res.destroy();
   }
-}).listen(PORT, () => console.log('Rink Deck on :' + PORT + ', data in ' + DATA));
+}).listen(PORT, () => { scanMusic(); console.log('Rink Deck on :' + PORT + ', data in ' + DATA); });

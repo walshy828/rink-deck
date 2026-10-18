@@ -344,6 +344,13 @@ dialog button.btn:disabled{opacity:.5}
 .swatches .custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:0;cursor:pointer}
 #sdOut{margin-top:14px}
 #sdOut .sum{font-size:14px;margin-bottom:6px}
+#sdMusic .ir{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+#sdMusic .ir .t{flex:1;min-width:0;font-size:14px}
+#sdMusic .ir .t b,#sdMusic .ir .t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sdMusic .ir .t small{color:var(--dim);font-size:12px}
+#sdMusic .ir.ok .t small{color:var(--ok)}
+#sdMusic .ir.bad .t small{color:var(--danger)}
+#sdMusic .ir button{flex:none}
 #sdOut .ir{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 #sdOut .ir .t{flex:1;min-width:0;font-size:14px}
 #sdOut .ir .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -450,6 +457,11 @@ dialog button.btn:disabled{opacity:.5}
 <dialog id="sd">
   <h3>Add songs</h3>
   <label for="sdBank">Add to bank</label><select id="sdBank"></select>
+
+  <h4>From my music library</h4>
+  <div class="inline"><input id="sdQ" type="search" placeholder="Search title, artist or album…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
+  <div class="inline" style="margin-top:6px;align-items:center"><div class="hint" id="sdMusicInfo" style="flex:1"></div><button class="btn" id="sdRescan">Rescan</button></div>
+  <div id="sdMusic"></div>
 
   <h4>From a YouTube link</h4>
   <div class="inline"><input id="sdUrl" type="text" inputmode="url" placeholder="https://youtu.be/…" autocomplete="off" autocapitalize="off"><button class="btn primary" id="sdUrlGo">Add</button></div>
@@ -1418,7 +1430,7 @@ async function ytStatus() {
     el.textContent = j.ok ? 'yt-dlp ' + j.version + ' · If imports start failing, update it (YouTube changes often).' : '⚠ Converter unavailable: ' + j.error;
   } catch (e) { el.textContent = '⚠ Server unreachable — importing needs a connection to the server.'; }
 }
-$('#setBtn').onclick = () => { setSide(false); fillBanks(); renderImp(); $('#sd').showModal(); ytStatus(); };
+$('#setBtn').onclick = () => { setSide(false); fillBanks(); renderImp(); $('#sd').showModal(); ytStatus(); musicStatus(); if ($('#sdQ').value.trim()) musicSearch(); };
 $('#sdClose').onclick = () => $('#sd').close();
 $('#sdUpd').onclick = async () => {
   const b = $('#sdUpd'); b.disabled = true; b.textContent = 'Updating…';
@@ -1440,6 +1452,67 @@ $('#sdListGo').onclick = () => {
   const lines = $('#sdList').value.split(/\r?\n/).map(l => l.trim()).filter(l => l && !l.startsWith('#'));
   if (!lines.length) return toast('Add at least one song');
   startImport(lines);
+};
+
+/* ---------- settings: add from the shared music library ---------- */
+// Server indexes the read-only /music mount; search matches title + parent folders (artist/album). Importing copies the
+// file into the app's own audio store so it syncs and plays offline like any other song.
+let musicTimer = null, musicSeq = 0;
+const musicRows = new Map();   // path -> 'busy' | 'done' | error text
+async function musicStatus() {
+  const el = $('#sdMusicInfo');
+  try {
+    const j = await (await api('music/status', {}, 15000)).json();
+    el.textContent = j.error ? '⚠ ' + j.error : j.scanning && !j.count ? 'Scanning your music folder…'
+      : j.count + ' songs indexed.';
+    if (j.scanning) setTimeout(musicStatus, 2000);
+  } catch (e) { el.textContent = '⚠ Server unreachable — searching needs a connection to the server.'; }
+}
+$('#sdQ').oninput = () => { clearTimeout(musicTimer); musicTimer = setTimeout(musicSearch, 250); };
+async function musicSearch() {
+  const q = $('#sdQ').value.trim(), out = $('#sdMusic'), seq = ++musicSeq;
+  if (!q) { out.innerHTML = ''; return; }
+  try {
+    const list = await (await api('music/search?q=' + encodeURIComponent(q), {}, 15000)).json();
+    if (seq !== musicSeq) return;
+    out.innerHTML = '';
+    if (!list.length) { out.innerHTML = '<div class="hint" style="margin-top:8px">No matches.</div>'; return; }
+    list.forEach(r => out.appendChild(musicRow(r)));
+  } catch (e) { if (seq === musicSeq) out.innerHTML = '<div class="hint" style="margin-top:8px">Search failed.</div>'; }
+}
+function musicHave(path) {
+  for (const b of S.banks) if (b.pads.some(p => p.src && p.src.music === path)) return b.name;
+  return null;
+}
+function musicRow(r) {
+  const row = document.createElement('div'), t = document.createElement('div'), b = document.createElement('b'), sm = document.createElement('small'), btn = document.createElement('button');
+  row.className = 'ir'; t.className = 't'; b.textContent = r.title; t.append(b, sm); row.append(t, btn);
+  const st = musicRows.get(r.path), have = musicHave(r.path);
+  sm.textContent = st && st !== 'busy' && st !== 'done' ? '✗ ' + st
+    : st === 'done' ? '✓ Added' : have ? 'Already in “' + have + '”' : [r.artist, r.album].filter(Boolean).join(' · ');
+  if (st === 'done') row.classList.add('ok'); else if (st && st !== 'busy') row.classList.add('bad');
+  btn.className = 'btn'; btn.textContent = st === 'busy' ? 'Adding…' : have || st === 'done' ? 'Add again' : 'Add';
+  btn.disabled = st === 'busy';
+  btn.onclick = () => addFromMusic(r, row);
+  return row;
+}
+async function addFromMusic(r, row) {
+  const bankId = $('#sdBank').value;
+  if (!S.banks.some(b => b.id === bankId)) return toast('Pick a bank');
+  musicRows.set(r.path, 'busy'); row.replaceWith(row = musicRow(r));
+  try {
+    const m = await (await postJson('music/import', { path: r.path }, 120000)).json();
+    try { await idbPut('files', m.id, await (await api('files/' + m.id, {}, 600000)).blob()); fresh.add(m.id); } catch (e) {}   // else sync fetches it
+    const b = S.banks.find(x => x.id === bankId) || curBank();
+    b.pads.push({ id: uid(), label: clip(m.title || r.title), fileId: m.id, start: 0, layer: false, loop: false, src: { music: r.path, artist: m.artist || undefined, album: m.album || undefined } });
+    save(); render(); warm(b); musicRows.set(r.path, 'done'); toast('Added to ' + b.name);
+  } catch (e) { musicRows.set(r.path, 'Could not add'); }
+  row.replaceWith(musicRow(r));
+}
+$('#sdRescan').onclick = async () => {
+  const b = $('#sdRescan'); b.disabled = true; $('#sdMusicInfo').textContent = 'Scanning…';
+  try { await postJson('music/rescan', {}, 300000); } catch (e) {}
+  b.disabled = false; musicStatus(); if ($('#sdQ').value.trim()) musicSearch();
 };
 
 function findDupe(it) {

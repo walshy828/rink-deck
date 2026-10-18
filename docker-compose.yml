@@ -7,5 +7,6 @@ services:
       - "8095:80"
     volumes:
       - /Users/dpw/Music/rink:/data # songs (data/audio) + library (data/state.json) — back this folder up
+      - /Users/dpw/media/music:/music:ro # shared music library, searched from Settings → Add songs (read-only; adjust the left side)
     # Put this behind your reverse proxy with HTTPS (e.g. rink.walshma.us).
     # Android only offers "Install app" over HTTPS.
