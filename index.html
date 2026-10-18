@@ -529,23 +529,29 @@ function dropAudio(padId) {
 }
 function warm(bank) { bank.pads.forEach(p => audioFor(p)); }
 
+// Fades are time-based (not step-counted) so a throttled background timer still finishes on schedule; hidden = no fade at all.
 function fadeOut(a, ms, keep) {
   clearInterval(a._fade);
   if (a.paused) { active.delete(a); return; }
-  const v0 = a.volume, steps = Math.max(1, Math.round(ms / 30)); let i = 0;
+  const done = () => { clearInterval(a._fade); a._fade = null; a.pause(); a.volume = S.master; active.delete(a); if (current === a && !keep) current = null; refresh(); };
+  if (document.hidden) { done(); return; }
+  const v0 = a.volume, t0 = performance.now();
   a._fade = setInterval(() => {
-    i++; a.volume = Math.max(0, v0 * (1 - i / steps));
-    if (i >= steps) { clearInterval(a._fade); a.pause(); a.volume = S.master; active.delete(a); if (current === a && !keep) current = null; refresh(); }
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    a.volume = Math.max(0, v0 * (1 - k));
+    if (k >= 1) done();
   }, 30);
 }
 // Short fade-in for songs that start mid-track, so they don't blast in. Same length as the next-song fade-out.
 function fadeIn(a, ms) {
   clearInterval(a._fade);
-  const steps = Math.max(1, Math.round(ms / 30)); let i = 0;
+  if (document.hidden) { a._fade = null; a.volume = S.master; return; }
+  const t0 = performance.now();
   a.volume = 0;
   a._fade = setInterval(() => {
-    i++; a.volume = Math.min(S.master, S.master * i / steps);
-    if (i >= steps) { clearInterval(a._fade); a._fade = null; a.volume = S.master; }
+    const k = Math.min(1, (performance.now() - t0) / ms);
+    a.volume = S.master * k;
+    if (k >= 1) { clearInterval(a._fade); a._fade = null; a.volume = S.master; }
   }, 30);
 }
 // Stop button: fade out and pause, but keep the song loaded so Play resumes from the same spot.
@@ -649,15 +655,23 @@ function shFill(b) {
 let wl = null;
 async function keepAwake() { try { if (!wl && 'wakeLock' in navigator) { wl = await navigator.wakeLock.request('screen'); wl.onrelease = () => { wl = null; }; } } catch (e) {} }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && active.size) keepAwake(); });
+// Media Session = the lock-screen / notification player on Android. Keeps playback controllable and alive in the background.
 function setMedia(pad) {
   if (!('mediaSession' in navigator)) return;
+  const ms = navigator.mediaSession;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: pad.label || 'Track', artist: 'Rink Deck' });
-    navigator.mediaSession.setActionHandler('nexttrack', next);
-    navigator.mediaSession.setActionHandler('pause', pauseCurrent);
-    navigator.mediaSession.setActionHandler('play', resumeCurrent);
-    navigator.mediaSession.setActionHandler('stop', pauseCurrent);
+    ms.metadata = new MediaMetadata({ title: pad.label || 'Track', artist: 'Rink Deck', album: 'Game day',
+      artwork: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] });
+    ms.playbackState = 'playing';
+    ms.setActionHandler('nexttrack', () => next());
+    ms.setActionHandler('pause', pauseCurrent);
+    ms.setActionHandler('play', resumeCurrent);
+    ms.setActionHandler('stop', pauseCurrent);
   } catch (e) {}
+}
+function syncMediaState() {
+  if (!('mediaSession' in navigator)) return;
+  try { navigator.mediaSession.playbackState = active.size ? 'playing' : (current ? 'paused' : 'none'); } catch (e) {}
 }
 
 /* ---------- rendering ---------- */
@@ -893,6 +907,7 @@ function toggleShuffle(b) {
 function render() { renderTabs(); renderBankBar(); renderEnergyRow(); renderGrid(); renderQueue(); }
 let curEl = null;
 function refresh() {
+  syncMediaState();
   const cp = current && current._pad, cid = cp && cp.id;
   document.querySelectorAll('.pad[data-id]').forEach(el => {
     const on = [...active].some(a => a._pad && a._pad.id === el.dataset.id);

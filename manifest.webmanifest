@@ -1,5 +1,8 @@
 {
+  "id": "./",
   "name": "Rink Deck",
+  "orientation": "any",
+  "categories": ["music", "sports"],
   "short_name": "Rink Deck",
   "description": "Game-day music pads and queue for hockey",
   "start_url": "./",
