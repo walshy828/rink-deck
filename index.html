@@ -69,6 +69,16 @@ svg.i{display:block;flex:none}
 #tabs button.add{border:1px dashed var(--line);background:var(--glass);padding:0 16px;color:var(--dim)}
 #tabs button.drop{transform:scale(1.08);background:rgba(var(--tk),.5);border-color:#fff}
 #tabs button svg{opacity:.85}
+#tabs button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+#tabs button .bi{font-size:19px;line-height:1}
+#tabs button.io{padding:0 13px}
+#padMenu .mt.bk{display:flex;align-items:center;gap:8px;white-space:normal;text-transform:none;letter-spacing:0;font-size:16px;font-weight:700;color:var(--text);filter:none;word-break:break-word}
+#padMenu .mt.bk .bi{font-size:24px;line-height:1}
+#bdIcons{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+#bdIcons button{width:38px;height:38px;border-radius:12px;border:1px solid var(--line);background:var(--glass);font-size:20px;padding:0}
+#bdIcons button.on{border-color:#fff;background:var(--glass2)}
+.iconrow{display:flex;gap:8px;align-items:center}
+.iconrow input{width:72px;text-align:center;font-size:22px}
 
 #bkInfo{flex:1;min-width:0}
 #bkInfo .l1{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--dim)}
@@ -449,6 +459,12 @@ dialog button.btn:disabled{opacity:.5}
 <dialog id="bd">
   <h3>Bank</h3>
   <label for="bdName">Name</label><input id="bdName" type="text" maxlength="20" autocomplete="off">
+  <label for="bdIcon">Emoji / icon</label>
+  <div class="iconrow"><input id="bdIcon" type="text" autocomplete="off" placeholder="🏒" aria-label="Bank emoji"><button id="bdIconX" class="txtbtn" type="button">Clear</button></div>
+  <div id="bdIcons"></div>
+  <label>Show on the bank button</label>
+  <div class="seg" id="bdShow"><button data-v="name">Name</button><button data-v="icon">Icon</button><button data-v="both">Both</button></div>
+  <div class="hint">Hold a bank button to see its full name, edit it, or move it.</div>
   <label>Colour — used for the bank and its songs</label><div class="swatches" id="bdKinds"></div>
   <div class="row"><button id="bdLeft">◀ Earlier</button><button id="bdRight">Later ▶</button></div>
   <div class="row"><button id="bdDel" class="danger">Delete</button><button id="bdCancel">Cancel</button><button id="bdSave" class="primary">Save</button></div>
@@ -844,16 +860,47 @@ function syncMediaState() {
 
 /* ---------- rendering ---------- */
 const fmt = t => isFinite(t) ? Math.floor(t / 60) + ':' + String(Math.floor(t % 60)).padStart(2, '0') : '';
+// What a bank button shows: 'name', 'icon' or 'both'. Icon-only falls back to the name when the bank has no icon yet.
+const bankShow = b => { const v = b.show === 'icon' || b.show === 'both' ? b.show : 'name'; return b.icon ? v : 'name'; };
+let bhFired = false;
+function bindBankHold(el, b) {
+  let tm = null, x = 0, y = 0;
+  const cancel = () => { clearTimeout(tm); tm = null; };
+  const fire = () => { bhFired = true; if (navigator.vibrate) navigator.vibrate(15); openBankMenu(b, el); };
+  el.onpointerdown = e => { if (e.pointerType === 'mouse' && e.button !== 0) return; bhFired = false; x = e.clientX; y = e.clientY; cancel(); tm = setTimeout(fire, 500); };
+  el.onpointermove = e => { if (tm && Math.hypot(e.clientX - x, e.clientY - y) > 10) cancel(); };
+  el.onpointerup = el.onpointercancel = el.onpointerleave = cancel;
+  el.oncontextmenu = e => { e.preventDefault(); if (!bhFired) { cancel(); fire(); } };
+}
+// Long-press menu for a bank button: full name + icon, edit, and move left/right (menu stays open so you can nudge repeatedly).
+function openBankMenu(b, el) {
+  closePadMenu();
+  const m = document.createElement('div'); m.id = 'padMenu'; m.className = 'glass';
+  const add = (icon, txt, fn) => { const x = document.createElement('button'); x.innerHTML = ic(icon, 20); x.append(txt); x.onclick = fn; m.appendChild(x); };
+  const title = document.createElement('div'); title.className = 'mt bk';
+  if (b.icon) { const ie = document.createElement('span'); ie.className = 'bi'; ie.textContent = b.icon; title.append(ie); }
+  title.append(b.name); m.appendChild(title);
+  add('pencil', 'Edit bank', () => { closePadMenu(); openBank(b); });
+  const i = S.banks.indexOf(b);
+  const mv = d => () => { bankEd = b; moveBank(d); const nel = $('#tabs button[data-bank="' + S.banks.indexOf(b) + '"]'); if (nel) openBankMenu(b, nel); };
+  if (i > 0) add('back', 'Move left', mv(-1));
+  if (i < S.banks.length - 1) add('next', 'Move right', mv(1));
+  menuAt(m, el);
+}
 function renderTabs() {
   const t = $('#tabs'); t.innerHTML = '';
   S.banks.forEach((b, i) => {
     const el = document.createElement('button'); el.dataset.bank = i;
     el.style.setProperty('--tk', bankRgb(b));
-    el.append(b.name);
+    const sh = bankShow(b);
+    if (sh !== 'name') { const ie = document.createElement('span'); ie.className = 'bi'; ie.textContent = b.icon; el.append(ie); }
+    if (sh !== 'icon') el.append(b.name); else el.classList.add('io');
+    el.setAttribute('aria-label', b.name);
     if (b.shuffle) el.insertAdjacentHTML('beforeend', ic('shuffle', 14));
     if (editing && i === S.bank) el.insertAdjacentHTML('beforeend', ic('pencil', 14));
     if (i === S.bank) el.classList.add('on');
-    el.onclick = () => { setQView(false); if (i === S.bank && editing) return openBank(b); S.bank = i; saveLocal(); warm(b); render(); };
+    el.onclick = () => { if (bhFired) { bhFired = false; return; } setQView(false); if (i === S.bank && editing) return openBank(b); S.bank = i; saveLocal(); warm(b); render(); };
+    bindBankHold(el, b);
     t.appendChild(el);
   });
   if (editing) { const a = document.createElement('button'); a.className = 'add'; a.innerHTML = ic('plus', 16) + 'Bank'; a.onclick = () => { S.banks.push({ id: uid(), name: 'New bank', color: PALETTE[5], pads: [] }); S.bank = S.banks.length - 1; save(); render(); openBank(curBank()); }; t.appendChild(a); }
@@ -866,7 +913,7 @@ function renderBankBar() {
     : view === 'list' && mode !== 'queue' ? 'Drag ⠿ to reorder'
     : mode === 'queue' ? 'Taps add to Up Next' : 'Hold a song for options';
   $('#bkInfo').innerHTML = '<div class="l1"><span class="kt"><i></i><b></b></span><span>' + n + (n === 1 ? ' song' : ' songs') + '</span></div><div class="l2"></div>';
-  $('#bkInfo .kt b').textContent = b.name; $('#bkInfo .l2').textContent = hint;
+  $('#bkInfo .kt b').textContent = (b.icon ? b.icon + ' ' : '') + b.name; $('#bkInfo .l2').textContent = hint;
 }
 function padEl(p, b) {
   const el = document.createElement('button'); el.className = 'pad'; el.dataset.id = p.id;
@@ -1285,7 +1332,17 @@ $('#outDb').oninput = e => {
 };
 
 /* bank dialog */
-let bankEd = null, pendingColor = PALETTE[5];
+let bankEd = null, pendingColor = PALETTE[5], pendingShow = 'name';
+const BANK_EMOJI = ['🏒','🥅','🚨','📣','🔥','⚡','🎺','🎵','🎶','🎤','🥁','🎸','👏','🏆','⭐','💥','🥶','🎉','🧊','🚀'];
+const oneGlyph = v => { v = (v || '').trim(); if (!v) return ''; try { return [...new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(v)][0].segment; } catch (e) { return Array.from(v)[0]; } };
+function buildIcons() {
+  const w = $('#bdIcons'); w.innerHTML = ''; const cur = $('#bdIcon').value;
+  BANK_EMOJI.forEach(e => { const x = document.createElement('button'); x.type = 'button'; x.textContent = e; if (e === cur) x.classList.add('on'); x.onclick = () => { $('#bdIcon').value = e; buildIcons(); }; w.appendChild(x); });
+}
+function buildShow() { $('#bdShow').querySelectorAll('button').forEach(x => x.classList.toggle('on', x.dataset.v === pendingShow)); }
+$('#bdShow').onclick = e => { const x = e.target.closest('button'); if (x) { pendingShow = x.dataset.v; buildShow(); } };
+$('#bdIcon').oninput = () => { $('#bdIcon').value = oneGlyph($('#bdIcon').value); buildIcons(); };
+$('#bdIconX').onclick = () => { $('#bdIcon').value = ''; buildIcons(); };
 function buildKinds() {
   const w = $('#bdKinds'); w.innerHTML = '';
   PALETTE.forEach(c => { const b = document.createElement('button'); b.style.setProperty('--tk', c); b.setAttribute('aria-label', 'Colour ' + c); if (c === pendingColor) b.classList.add('on'); b.onclick = () => { pendingColor = c; buildKinds(); }; w.appendChild(b); });
@@ -1294,9 +1351,9 @@ function buildKinds() {
   inp.oninput = () => { pendingColor = hexToRgb(inp.value); l.style.setProperty('--tk', pendingColor); l.classList.add('on'); w.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); };
   w.appendChild(l);
 }
-function openBank(b) { bankEd = b; pendingColor = bankRgb(b); buildKinds(); $('#bdName').value = b.name; $('#bdDel').style.display = S.banks.length > 1 ? '' : 'none'; $('#bd').showModal(); }
+function openBank(b) { bankEd = b; pendingColor = bankRgb(b); buildKinds(); $('#bdName').value = b.name; $('#bdIcon').value = b.icon || ''; pendingShow = b.show === 'icon' || b.show === 'both' ? b.show : 'name'; buildIcons(); buildShow(); $('#bdDel').style.display = S.banks.length > 1 ? '' : 'none'; $('#bd').showModal(); }
 $('#bdCancel').onclick = () => $('#bd').close();
-$('#bdSave').onclick = () => { bankEd.name = $('#bdName').value.trim() || 'Bank'; bankEd.color = pendingColor; delete bankEd.kind; save(); $('#bd').close(); render(); };
+$('#bdSave').onclick = () => { bankEd.name = $('#bdName').value.trim() || 'Bank'; bankEd.color = pendingColor; delete bankEd.kind; bankEd.icon = oneGlyph($('#bdIcon').value); bankEd.show = pendingShow; save(); $('#bd').close(); render(); };
 function moveBank(d) {
   const i = S.banks.indexOf(bankEd), j = i + d; if (j < 0 || j >= S.banks.length) return;
   const cur = curBank(); [S.banks[i], S.banks[j]] = [S.banks[j], S.banks[i]]; S.bank = S.banks.indexOf(cur); save(); renderTabs();
