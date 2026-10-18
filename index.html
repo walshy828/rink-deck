@@ -23,7 +23,7 @@ svg.i{display:block;flex:none}
 
 /* ambient background that takes on the colour of the bank you're viewing */
 .bg{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.blob{position:absolute;border-radius:50%;filter:blur(90px);opacity:.55;transition:background-color .9s ease}
+.blob{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55;transition:background-color .9s ease}
 .b1{width:70vmax;height:70vmax;left:-25vmax;top:-30vmax;background:rgb(var(--k))}
 .b2{width:55vmax;height:55vmax;right:-25vmax;top:25vh;background:#3a2a8c;opacity:.45}
 .b3{width:60vmax;height:60vmax;left:-10vmax;bottom:-35vmax;background:rgb(var(--k));opacity:.28;transition:background-color .9s ease}
@@ -566,22 +566,51 @@ function audioFor(pad) {
     a.onended = () => onEnded(a);
     return { a, url };
   });
-  cache.set(pad.id, { fileId: pad.fileId, p });
+  const ent = { fileId: pad.fileId, p, r: null };
+  cache.set(pad.id, ent);
+  p.then(r => { if (r) { ent.r = r; r.a._used = Date.now(); trimAudio(); } });
   p.then(r => { if (!r && cache.get(pad.id) && cache.get(pad.id).p === p) cache.delete(pad.id); });   // retry once the file has synced down
   return p;
 }
 function dropAudio(padId) {
   const c = cache.get(padId); if (!c) return;
   cache.delete(padId);
-  c.p.then(r => { if (r) { r.a.pause(); active.delete(r.a); URL.revokeObjectURL(r.url); } });
+  c.p.then(r => { if (r) releaseAudio(r); });
 }
-function warm(bank) { bank.pads.forEach(p => audioFor(p)); }
+// Every loaded <audio> holds a decoder / output stream. Mobile browsers cap these, and past the cap elements "play"
+// (progress moves) with no sound. So keep only a handful loaded and release the least recently used; they reload on demand.
+const MAX_LOADED = 16;
+function releaseAudio(r) {
+  const a = r.a; clearInterval(a._fade); a.onended = null; a.pause(); active.delete(a);
+  a.removeAttribute('src'); try { a.load(); } catch (e) {}
+  URL.revokeObjectURL(r.url);
+}
+function trimAudio() {
+  const keep = new Set(lookaheadIds());
+  const ents = [...cache.entries()].filter(([, c]) => c.r);
+  const over = ents.length - MAX_LOADED;
+  if (over <= 0) return;
+  ents.filter(([id, c]) => !active.has(c.r.a) && c.r.a !== current && !keep.has(id))
+    .sort((x, y) => x[1].r.a._used - y[1].r.a._used)
+    .slice(0, over).forEach(([id]) => { const c = cache.get(id); cache.delete(id); releaseAudio(c.r); });
+}
+// Preload only what can be needed next. Tap-pad banks (horns, effects) preload fully for instant response; shuffle banks
+// preload nothing themselves (their upcoming picks are loaded by lookahead()), and the cued queue loads 10 ahead.
+const LOOKAHEAD = 10;
+function warm(bank) { if (!bank.shuffle) bank.pads.forEach(p => audioFor(p)); lookahead(); }
+function lookaheadIds() {
+  const ids = S.queue.slice(0, LOOKAHEAD);
+  const sb = shufBank(false);
+  if (sb && sb.up) ids.push(...sb.up.slice(0, 3));
+  return ids;
+}
+function lookahead() { lookaheadIds().forEach(id => { const pad = findPad(id); if (pad) audioFor(pad); }); }
 
 // Fades are time-based (not step-counted) so a throttled background timer still finishes on schedule; hidden = no fade at all.
 function fadeOut(a, ms, keep) {
   clearInterval(a._fade);
   if (a.paused) { active.delete(a); return; }
-  const done = () => { clearInterval(a._fade); a._fade = null; a.pause(); a.volume = S.master; active.delete(a); if (current === a && !keep) current = null; refresh(); };
+  const done = () => { clearInterval(a._fade); a._fade = null; a.pause(); a.volume = S.master; active.delete(a); if (current === a && !keep) current = null; if (a._once && !keep && a._pad) dropAudio(a._pad.id); refresh(); };
   if (document.hidden) { done(); return; }
   const v0 = a.volume, t0 = performance.now();
   a._fade = setInterval(() => {
@@ -625,7 +654,8 @@ async function play(pad, fromQueue = false, fromStart = false) {
     const b = bankOf(pad.id);
     if (b) { lastBankId = b.id; if (b.shuffle) { homeId = b.id; b.last = pad.id; b.up = (b.up || []).filter(x => x !== pad.id); shFill(b); save(); renderQueue(); } }
   }
-  clearInterval(a._fade);
+  clearInterval(a._fade); a._used = Date.now();
+  a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
   const st = fromStart ? 0 : (pad.start || 0);
   a.loop = !!pad.loop; a.volume = st > 0 ? 0 : S.master;
   try { a.currentTime = st; } catch (e) {}
@@ -634,10 +664,11 @@ async function play(pad, fromQueue = false, fromStart = false) {
   active.add(a);
   if (isTest) { refresh(); return; }
   if (!pad.layer || !current) current = a;
-  keepAwake(); setMedia(pad); refresh();
+  keepAwake(); setMedia(pad); refresh(); lookahead();
 }
 function onEnded(a) {
   active.delete(a);
+  if (a._once && a._pad) dropAudio(a._pad.id);   // played through: nothing goes back to it, free the decoder
   if (current === a) { current = null; if (a._pad && a._pad.id !== '__test' && (S.queue.length || shufBank())) next(true); }
   refresh();
 }
@@ -977,7 +1008,10 @@ function toggleShuffle(b) {
   save(); renderTabs(); renderEchips(); renderQueue();
   toast('Shuffle ' + (b.shuffle ? 'on · ' : 'off · ') + b.name);
 }
-function render() { renderTabs(); renderBankBar(); renderGrid(); renderQueue(); }
+function render() {
+  // Each part is isolated so one failure can't leave the whole screen empty while audio keeps playing.
+  for (const f of [renderTabs, renderBankBar, renderGrid, renderQueue]) { try { f(); } catch (e) { console.error('render', f.name, e); } }
+}
 let curEl = null;
 function refresh() {
   syncMediaState();
@@ -1013,8 +1047,9 @@ function tick() {
     $('#npTime').textContent = a.loop ? 'loop' : '-' + fmt(a.duration - a.currentTime);
     if (curEl) curEl.style.setProperty('--prog', pct + '%');
   } else { $('#bar i').style.width = '0'; $('#tCur').textContent = ''; $('#npTime').textContent = ''; }
-  requestAnimationFrame(tick);
+  requestAnimationFrame(safeTick);
 }
+function safeTick() { try { tick(); } catch (e) { console.error('tick', e); requestAnimationFrame(safeTick); } }
 
 /* ---------- pad menu (long-press) ---------- */
 // Cued songs go to the end of the queue, which always plays before shuffle picks.
@@ -1453,7 +1488,7 @@ async function syncNow(manual) {
 
     if (useServer && !document.querySelector('dialog[open]')) {
       S.banks = srv.state.banks; S.queue = srv.state.queue || [];
-      S.bank = Math.min(S.bank, S.banks.length - 1);
+      S.bank = Math.max(0, Math.min(S.bank, S.banks.length - 1));
       sync.rev = srv.rev; sync.dirty = false;
       for (const id of [...cache.keys()]) if (!findPad(id)) dropAudio(id);
       saveLocal(); idbPut('meta', 'sync', sync).catch(() => {}); render();
@@ -1511,17 +1546,44 @@ async function syncNow(manual) {
 }
 $('#syncBtn').onclick = () => syncNow(true);
 
+/* ---------- recovery + back gesture ---------- */
+// Rebuild the UI if it has gone blank (render failure, or the browser dropped the page's surface while backgrounded).
+function recover() {
+  try {
+    if (!$('#tabs').children.length || !$('#grid').children.length) render();
+    refresh();
+    document.body.style.display = 'none'; void document.body.offsetHeight; document.body.style.display = '';   // force a repaint
+  } catch (e) { console.error('recover', e); }
+}
+// Back swipe/button: close whatever is open instead of leaving the app. A guard history entry means back never exits to a blank page.
+function initBack() {
+  history.replaceState({ rd: 0 }, '');
+  history.pushState({ rd: 1 }, '');
+  addEventListener('popstate', () => {
+    document.querySelectorAll('dialog[open]').forEach(d => d.close());
+    if (document.body.classList.contains('side')) setSide(false);
+    else if (qView) setQView(false);
+    else if (!$('#moreMenu').hidden) setMore(false);
+    else if (editing) setEditing(false);
+    history.pushState({ rd: 1 }, '');   // re-arm the guard so the next back is handled too
+  });
+}
+
 /* ---------- boot ---------- */
 (async function () {
   try { const st = await idbGet('meta', 'state'); if (st && st.banks) S = st; } catch (e) {}
   try { const sy = await idbGet('meta', 'sync'); if (sy) sync = sy; } catch (e) {}
-  $('#vol').value = S.master; render(); warm(curBank()); tick();
+  $('#vol').value = S.master; render(); warm(curBank()); safeTick();
   if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--dockH', $('#dock').offsetHeight + 'px')).observe($('#dock'));
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   syncNow();
   setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
   addEventListener('online', () => syncNow());
-  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') syncNow(); });
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { recover(); syncNow(); } });
+  addEventListener('pageshow', recover);
+  addEventListener('error', () => setTimeout(recover, 0));
+  addEventListener('unhandledrejection', () => setTimeout(recover, 0));
+  initBack();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
 })();
 </script>
