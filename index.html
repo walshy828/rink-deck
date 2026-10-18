@@ -414,6 +414,9 @@ dialog button.btn:disabled{opacity:.5}
   <div class="vseg" id="view" role="group" aria-label="Song layout"><button data-v="grid" class="on" aria-label="Card view" data-ic="grid" data-sz="17"></button><button data-v="list" aria-label="List view" data-ic="rows" data-sz="17"></button></div>
   <div class="slab">Tapping a song</div>
   <div class="seg" id="mode" role="group" aria-label="What tapping a song does"><button data-m="play" class="on">Play</button><button data-m="queue" class="q">Add to Up Next</button></div>
+  <div class="slab">Output level: <span id="outVal">0 dB</span></div>
+  <input id="outDb" type="range" min="-12" max="12" step="1" value="0" aria-label="Overall output boost or cut" style="width:100%">
+  <div class="hint">Boost or cut every song, on top of each song's own setting. Saved on this device.</div>
   <div class="slab">Library</div>
   <button id="editBtn" class="srow"><span data-ic="pencil" data-sz="20"></span><span id="editTxt">Edit songs &amp; banks</span></button>
   <button id="addBtn" class="srow"><span data-ic="plus" data-sz="20"></span><span>Add song</span></button>
@@ -628,7 +631,9 @@ function lookahead() { lookaheadIds().forEach(id => { const pad = findPad(id); i
 // Per-song loudness (pad.gain, dB). Cuts just scale element.volume; boosts above 0 dB need a Web Audio GainNode,
 // created only for songs that actually use one so normal playback stays on the plain <audio> path.
 let boostCtx = null;
-const padGain = a => Math.pow(10, ((a._pad && a._pad.gain) || 0) / 20);
+// outDb = app-wide boost/cut on top of each song's own setting; device-only (it depends on the speakers), so it lives in localStorage.
+let outDb = 0; try { outDb = Math.max(-12, Math.min(12, +localStorage.getItem('rd.out') || 0)); } catch (e) {}
+const padGain = a => Math.pow(10, (((a._pad && a._pad.gain) || 0) + outDb) / 20);
 function setVol(a, v) {
   const g = padGain(a);
   if (g > 1 && !a._gn) {
@@ -1259,6 +1264,13 @@ $('#mShuffle').onclick = () => toggleShuffle(curBank());
 $('#qClear').onclick = () => { S.queue = []; save(); renderQueue(); renderGrid(); };
 $('#vol').oninput = e => { S.master = +e.target.value; active.forEach(a => { if (!a._fade) setVol(a, S.master); }); };
 $('#vol').onchange = saveLocal;
+const showOut = () => { $('#outVal').textContent = (outDb > 0 ? '+' : '') + outDb + ' dB'; };
+$('#outDb').value = outDb; showOut();
+$('#outDb').oninput = e => {
+  outDb = +e.target.value; showOut();
+  try { localStorage.setItem('rd.out', outDb); } catch (err) {}
+  active.forEach(a => { if (!a._fade) setVol(a, S.master); });
+};
 
 /* bank dialog */
 let bankEd = null, pendingColor = PALETTE[5];
