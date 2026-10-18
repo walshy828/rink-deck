@@ -1086,7 +1086,16 @@ function safeTick() { try { tick(); } catch (e) { console.error('tick', e); requ
 /* ---------- pad menu (long-press) ---------- */
 // Cued songs go to the end of the queue, which always plays before shuffle picks.
 function closePadMenu() { const m = $('#padMenu'); if (m) m.remove(); document.removeEventListener('pointerdown', onMenuOutside, true); }
-function onMenuOutside(e) { const m = $('#padMenu'); if (m && !m.contains(e.target)) { e.preventDefault(); e.stopPropagation(); closePadMenu(); } }
+function onMenuOutside(e) {
+  const m = $('#padMenu');
+  if (!m || m.contains(e.target)) return;
+  e.preventDefault(); e.stopPropagation(); closePadMenu();
+  // the tap that dismisses the menu must not also hit whatever is underneath: swallow its click
+  const eat = ev => { ev.preventDefault(); ev.stopPropagation(); ev.stopImmediatePropagation(); off(); };
+  const off = () => { clearTimeout(t); document.removeEventListener('click', eat, true); };
+  const t = setTimeout(off, 600);
+  document.addEventListener('click', eat, true);
+}
 function menuAt(m, el, below) {
   document.body.appendChild(m);
   const r = el.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
