@@ -434,6 +434,9 @@ dialog button.btn:disabled{opacity:.5}
   <div class="slab">Output level: <span id="outVal">0 dB</span></div>
   <input id="outDb" type="range" min="-12" max="12" step="1" value="0" aria-label="Overall output boost or cut" style="width:100%">
   <div class="hint">Boost or cut every song, on top of each song's own setting. Saved on this device.</div>
+  <div class="slab">Crossfade: <span id="xfVal">4 s</span></div>
+  <input id="xfSec" type="range" min="0" max="12" step="1" value="4" aria-label="Crossfade length between songs" style="width:100%">
+  <div class="hint">Blend the end of a song into the next one in Up Next or shuffle. 0 = off. Saved on this device.</div>
   <div class="slab">Library</div>
   <button id="editBtn" class="srow"><span data-ic="pencil" data-sz="20"></span><span id="editTxt">Edit songs &amp; banks</span></button>
   <button id="addBtn" class="srow"><span data-ic="plus" data-sz="20"></span><span>Add song</span></button>
@@ -716,25 +719,56 @@ async function resumeCurrent() {
   try { await a.play(); } catch (e) { toast('Tap again — browser blocked audio'); return; }
   active.add(a); keepAwake(); refresh();
 }
-function stopAll(ms = 600, except = null) { [...active].forEach(a => { if (a !== except) fadeOut(a, ms); }); }
+function stopAll(ms = 600, except = null) { const ex = [].concat(except); [...active].forEach(a => { if (!ex.includes(a)) fadeOut(a, ms); }); }
 
-async function play(pad, fromQueue = false, fromStart = false) {
+// Crossfade: as a queue/shuffle song nears its end, start the next one underneath and swap levels over the remaining time
+// (equal-power curves, so the blend stays level instead of dipping). xfSec = 0 turns it off; device-only like the output level.
+let xfSec = 4; try { const v = localStorage.getItem('rd.xf'); if (v !== null) xfSec = Math.max(0, Math.min(12, +v || 0)); } catch (e) {}
+function crossfade(o, n, ms) {
+  clearInterval(o._fade); clearInterval(n._fade);
+  const t0 = performance.now();
+  const id = o._fade = n._fade = setInterval(() => {
+    const k = Math.min(1, (performance.now() - t0) / ms), h = k * Math.PI / 2;
+    setVol(o, S.master * Math.cos(h)); setVol(n, S.master * Math.sin(h));
+    if (k < 1) return;
+    clearInterval(id); o._fade = n._fade = null;
+    o.pause(); active.delete(o); setVol(o, S.master); setVol(n, S.master);
+    if (o._once && o._pad) dropAudio(o._pad.id);
+    refresh();
+  }, 30);
+}
+function xfCheck() {
+  const a = current;
+  if (!xfSec || !a || a._xf || a.paused || a.loop || document.hidden || !a._pad || a._pad.layer || a._pad.id === '__test') return;
+  if (!isFinite(a.duration) || a.duration < xfSec * 3) return;   // too short to blend (horns, effects): leave to onEnded
+  const left = a.duration - a.currentTime;
+  if (left > xfSec || !(S.queue.length || shufBank())) return;
+  a._xf = true;
+  const pad = takeNext(true); if (!pad) return;
+  if (pad.id === a._pad.id) { S.queue.unshift(pad.id); return; }   // same song again: let it finish, onEnded restarts it
+  save(); renderQueue(); renderGrid();
+  play(pad, true, false, { from: a, ms: Math.max(300, left * 1000) });
+}
+setInterval(() => { try { xfCheck(); } catch (e) { console.error('xf', e); } }, 200);
+
+async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   const r = await audioFor(pad);
   if (!r) { toast(pad.fileId ? 'Audio missing' : 'No audio on this pad'); return; }
   const a = r.a;
   const isTest = pad.id === '__test';   // editor preview: leave the real player (music, queue, now-playing) alone
   if (!pad.layer && !isTest) {
-    stopAll(250, a);
+    stopAll(250, blend ? [a, blend.from] : a);
     const b = bankOf(pad.id);
     if (b) { lastBankId = b.id; if (b.shuffle) { homeId = b.id; b.last = pad.id; b.up = (b.up || []).filter(x => x !== pad.id); shFill(b); save(); renderQueue(); } }
   }
-  clearInterval(a._fade); a._used = Date.now();
+  clearInterval(a._fade); a._used = Date.now(); a._xf = false;
   a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
   const st = fromStart ? 0 : (pad.start || 0);
-  a.loop = !!pad.loop; setVol(a, S.master); if (st > 0) a.volume = 0;
+  a.loop = !!pad.loop; setVol(a, S.master); if (st > 0 || blend) a.volume = 0;
   try { a.currentTime = st; } catch (e) {}
   try { await a.play(); } catch (e) { setVol(a, S.master); toast('Tap again — browser blocked audio'); return; }
-  if (st > 0) fadeIn(a, 400);
+  if (blend && active.has(blend.from) && !blend.from.paused) crossfade(blend.from, a, blend.ms);
+  else if (st > 0 || blend) fadeIn(a, 400);
   active.add(a);
   if (isTest) { refresh(); return; }
   if (!pad.layer || !current) current = a;
@@ -746,18 +780,25 @@ function onEnded(a) {
   if (current === a) { current = null; if (a._pad && a._pad.id !== '__test' && (S.queue.length || shufBank())) next(true); }
   refresh();
 }
-function next(arg) {
+// Pops the next song: the cued queue first, then the shuffle bank's pre-picked list. null = nothing cued.
+function takeNext(arg) {
   while (S.queue.length) {
     const pad = findPad(S.queue.shift());
-    if (pad && pad.fileId) { save(); renderQueue(); renderGrid(); stopAll(400); play(pad, true); return; }
+    if (pad && pad.fileId) return pad;
   }
   const b = shufBank(arg !== true);
   if (b) {
     shFill(b);
     const pad = b.up.length && findPad(b.up[0]);
-    if (pad) { b.up.shift(); save(); renderQueue(); renderGrid(); stopAll(400); play(pad, true); return; }
+    if (pad) { b.up.shift(); return pad; }
   }
-  save(); renderQueue(); renderGrid(); toast('Nothing cued');
+  return null;
+}
+function next(arg) {
+  const pad = takeNext(arg);
+  save(); renderQueue(); renderGrid();
+  if (!pad) { toast('Nothing cued'); return; }
+  stopAll(400); play(pad, true);
 }
 
 /* ---------- shuffle (per bank) ---------- */
@@ -1335,6 +1376,13 @@ $('#outDb').oninput = e => {
   outDb = +e.target.value; showOut();
   try { localStorage.setItem('rd.out', outDb); } catch (err) {}
   active.forEach(a => { if (!a._fade) setVol(a, S.master); });
+};
+
+const showXf = () => { $('#xfVal').textContent = xfSec ? xfSec + ' s' : 'Off'; };
+$('#xfSec').value = xfSec; showXf();
+$('#xfSec').oninput = e => {
+  xfSec = +e.target.value; showXf();
+  try { localStorage.setItem('rd.xf', xfSec); } catch (err) {}
 };
 
 /* bank dialog */
