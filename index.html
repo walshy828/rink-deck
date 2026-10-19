@@ -443,7 +443,7 @@ dialog button.btn:disabled{opacity:.5}
 
 <dialog id="ed">
   <h3 id="edTitle">Song</h3>
-  <label for="edName">Name</label><input id="edName" type="text" maxlength="24" autocomplete="off">
+  <label for="edName">Name</label><input id="edName" type="text" maxlength="100" autocomplete="off">
   <label for="edBank">Bank</label><select id="edBank"></select>
   <label for="edFile">Audio file</label><input id="edFile" type="file" accept="audio/*">
   <div class="hint" id="edFileName"></div>
@@ -1399,7 +1399,7 @@ $('#edFile').onchange = e => {
   pendingFile = e.target.files[0] || null;
   if (pendingFile) { $('#edFileName').textContent = pendingFile.name; if (!$('#edName').value.trim()) $('#edName').value = cleanName(pendingFile.name); }
 };
-const cleanName = n => n.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').slice(0, 24);
+const cleanName = n => n.replace(/\.[^.]+$/, '').replace(/[_]+/g, ' ').slice(0, 100);
 $('#edCancel').onclick = () => $('#ed').close();
 // Test pauses whatever the player is doing; closing the editor (save, cancel or delete) ends the test and resumes it where it left off.
 let testHeld = [];
@@ -1468,7 +1468,7 @@ $('#bulk').onchange = async e => {
 // Server does the work (yt-dlp + ffmpeg -> mp3). Two phases so duplicates can be flagged *before* anything is replaced:
 // 1) resolve every line to a concrete YouTube video, 2) compare to the library, 3) download what the user approved.
 const norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '');
-const clip = s => s.length > 40 ? s.slice(0, 39).trimEnd() + '…' : s;
+const clip = s => s.length > 100 ? s.slice(0, 99).trimEnd() + '…' : s;
 const tidyTitle = t => t.replace(/\s*[\(\[][^)\]]*(official|video|audio|lyric|remaster|visuali[sz]er|\bhd\b|4k)[^)\]]*[\)\]]/gi, '').trim();
 const postJson = (path, body, ms) => api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }, ms);
 let imp = null;   // {bankId, stage: resolving|review|downloading|done, items:[{q,label,vid,title,st,msg,dup,action}]}
