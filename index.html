@@ -354,13 +354,13 @@ dialog button.btn:disabled{opacity:.5}
 .swatches .custom input{position:absolute;inset:0;width:100%;height:100%;opacity:0;padding:0;border:0;cursor:pointer}
 #sdOut{margin-top:14px}
 #sdOut .sum{font-size:14px;margin-bottom:6px}
-#sdMusic .ir{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
-#sdMusic .ir .t{flex:1;min-width:0;font-size:14px}
-#sdMusic .ir .t b,#sdMusic .ir .t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-#sdMusic .ir .t small{color:var(--dim);font-size:12px}
-#sdMusic .ir.ok .t small{color:var(--ok)}
-#sdMusic .ir.bad .t small{color:var(--danger)}
-#sdMusic .ir button{flex:none}
+#sdMusic .ir,#sdPl .ir{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
+#sdMusic .ir .t,#sdPl .ir .t{flex:1;min-width:0;font-size:14px}
+#sdMusic .ir .t b,#sdMusic .ir .t small,#sdPl .ir .t b,#sdPl .ir .t small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+#sdMusic .ir .t small,#sdPl .ir .t small{color:var(--dim);font-size:12px}
+#sdMusic .ir.ok .t small,#sdPl .ir.ok .t small{color:var(--ok)}
+#sdMusic .ir.bad .t small,#sdPl .ir.bad .t small{color:var(--danger)}
+#sdMusic .ir button,#sdPl .ir button{flex:none}
 #sdOut .ir{display:flex;gap:8px;align-items:center;padding:8px 0;border-top:1px solid var(--line)}
 #sdOut .ir .t{flex:1;min-width:0;font-size:14px}
 #sdOut .ir .t b{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -478,6 +478,12 @@ dialog button.btn:disabled{opacity:.5}
   <div class="inline"><input id="sdQ" type="search" placeholder="Search title, artist or album…" autocomplete="off" autocapitalize="off" spellcheck="false"></div>
   <div class="inline" style="margin-top:6px;align-items:center"><div class="hint" id="sdMusicInfo" style="flex:1"></div><button class="btn" id="sdRescan">Rescan</button></div>
   <div id="sdMusic"></div>
+
+  <h4>From a playlist</h4>
+  <div class="hint">M3U playlists found in your music library. Importing again only adds songs that are new to the bank.</div>
+  <div class="inline" style="margin-top:6px"><input id="sdPlQ" type="search" placeholder="Search playlists…" autocomplete="off" autocapitalize="off" spellcheck="false"><button class="btn" id="sdPlFile">Load .m3u…</button></div>
+  <input id="sdPlTxt" type="file" accept=".m3u,.m3u8,audio/x-mpegurl,application/vnd.apple.mpegurl" hidden>
+  <div id="sdPl"></div>
 
   <h4>From a YouTube link</h4>
   <div class="inline"><input id="sdUrl" type="text" inputmode="url" placeholder="https://youtu.be/…" autocomplete="off" autocapitalize="off"><button class="btn primary" id="sdUrlGo">Add</button></div>
@@ -1478,7 +1484,7 @@ $('#sdBank').onchange = e => {
   if (el.value !== '__new') { el._prev = el.value; return; }
   const name = (prompt('New bank name') || '').trim().slice(0, 20);
   if (!name) { el.value = el._prev; return; }
-  const b = { id: uid(), name, pads: [] }; S.banks.push(b); save(); render(); fillBanks(b.id);
+  const b = { id: uid(), name, pads: [] }; S.banks.push(b); save(); render(); fillBanks(b.id); renderPlaylists();
 };
 async function ytStatus() {
   const el = $('#sdYt'); el.textContent = 'Checking…';
@@ -1487,7 +1493,7 @@ async function ytStatus() {
     el.textContent = j.ok ? 'yt-dlp ' + j.version + ' · If imports start failing, update it (YouTube changes often).' : '⚠ Converter unavailable: ' + j.error;
   } catch (e) { el.textContent = '⚠ Server unreachable — importing needs a connection to the server.'; }
 }
-$('#setBtn').onclick = () => { setSide(false); fillBanks(); renderImp(); $('#sd').showModal(); ytStatus(); musicStatus(); if ($('#sdQ').value.trim()) musicSearch(); };
+$('#setBtn').onclick = () => { setSide(false); fillBanks(); renderImp(); $('#sd').showModal(); ytStatus(); musicStatus(); if ($('#sdQ').value.trim()) musicSearch(); playlistSearch(); };
 $('#sdClose').onclick = () => $('#sd').close();
 $('#sdUpd').onclick = async () => {
   const b = $('#sdUpd'); b.disabled = true; b.textContent = 'Updating…';
@@ -1553,19 +1559,90 @@ function musicRow(r) {
   btn.onclick = () => addFromMusic(r, row);
   return row;
 }
+// Copies one library song into the app and appends it to the bank; returns the bank.
+async function importTrack(path, fallbackTitle, bankId) {
+  const m = await (await postJson('music/import', { path }, 120000)).json();
+  if (!m.id) throw new Error('import failed');
+  try { await idbPut('files', m.id, await (await api('files/' + m.id, {}, 600000)).blob()); fresh.add(m.id); } catch (e) {}   // else sync fetches it
+  const b = S.banks.find(x => x.id === bankId) || curBank();
+  b.pads.push({ id: uid(), label: clip(m.title || fallbackTitle), fileId: m.id, start: 0, layer: false, loop: false, src: { music: path, artist: m.artist || undefined, album: m.album || undefined } });
+  save(); render(); warm(b);
+  return b;
+}
 async function addFromMusic(r, row) {
   const bankId = $('#sdBank').value;
   if (!S.banks.some(b => b.id === bankId)) return toast('Pick a bank');
   musicRows.set(r.path, 'busy'); row.replaceWith(row = musicRow(r));
   try {
-    const m = await (await postJson('music/import', { path: r.path }, 120000)).json();
-    try { await idbPut('files', m.id, await (await api('files/' + m.id, {}, 600000)).blob()); fresh.add(m.id); } catch (e) {}   // else sync fetches it
-    const b = S.banks.find(x => x.id === bankId) || curBank();
-    b.pads.push({ id: uid(), label: clip(m.title || r.title), fileId: m.id, start: 0, layer: false, loop: false, src: { music: r.path, artist: m.artist || undefined, album: m.album || undefined } });
-    save(); render(); warm(b); musicRows.set(r.path, 'done'); toast('Added to ' + b.name);
+    const b = await importTrack(r.path, r.title, bankId);
+    musicRows.set(r.path, 'done'); toast('Added to ' + b.name);
   } catch (e) { musicRows.set(r.path, 'Could not add'); }
   row.replaceWith(musicRow(r));
 }
+
+/* ---------- settings: import a playlist (.m3u) ---------- */
+// Server finds playlists in the library and resolves each entry to an indexed song. "New" = not already in the chosen bank
+// (matched by library path), so re-importing a playlist that has grown only adds the additions.
+let plTimer = null, plSeq = 0, plList = [];
+const plBusy = new Map();   // key -> progress/result text while importing
+const plKey = pl => pl.path || 'file:' + pl.name;
+const plNew = (pl, bankId) => {
+  const b = S.banks.find(x => x.id === bankId), have = new Set(b ? b.pads.map(p => p.src && p.src.music).filter(Boolean) : []);
+  return pl.tracks.filter(t => !have.has(t));
+};
+async function playlistSearch() {
+  const q = $('#sdPlQ').value.trim(), out = $('#sdPl'), seq = ++plSeq;
+  try {
+    const list = await (await api('music/playlists?q=' + encodeURIComponent(q), {}, 60000)).json();
+    if (seq !== plSeq) return;
+    plList = list; renderPlaylists();
+  } catch (e) { if (seq === plSeq) out.innerHTML = '<div class="hint" style="margin-top:8px">Could not load playlists.</div>'; }
+}
+function renderPlaylists() {
+  const out = $('#sdPl'), bankId = $('#sdBank').value;
+  out.innerHTML = '';
+  if (!plList.length) { out.innerHTML = '<div class="hint" style="margin-top:8px">' + ($('#sdPlQ').value.trim() ? 'No playlists match.' : 'No .m3u playlists found in the library. Use “Load .m3u…” to pick one.') + '</div>'; return; }
+  plList.forEach(pl => {
+    const row = document.createElement('div'), t = document.createElement('div'), b = document.createElement('b'), sm = document.createElement('small'), btn = document.createElement('button');
+    row.className = 'ir'; t.className = 't'; b.textContent = pl.name; t.append(b, sm); row.append(t, btn);
+    const fresh_ = plNew(pl, bankId), busy = plBusy.get(plKey(pl)), n = pl.tracks.length;
+    const bits = [n + ' song' + (n === 1 ? '' : 's')];
+    if (pl.missing) bits.push(pl.missing + ' not in library');
+    if (n && fresh_.length < n) bits.push(fresh_.length ? fresh_.length + ' new' : 'all in bank');
+    sm.textContent = busy || bits.join(' · ');
+    if (pl.folder && !busy) sm.title = pl.path;
+    btn.className = 'btn';
+    btn.textContent = busy ? '…' : !n ? 'Empty' : !fresh_.length ? 'Up to date' : fresh_.length < n ? 'Add ' + fresh_.length + ' new' : 'Import ' + n;
+    btn.disabled = !!busy || !fresh_.length;
+    btn.onclick = () => importPlaylist(pl);
+    out.appendChild(row);
+  });
+}
+async function importPlaylist(pl) {
+  const bankId = $('#sdBank').value, key = plKey(pl);
+  if (!S.banks.some(b => b.id === bankId)) return toast('Pick a bank');
+  if (plBusy.has(key)) return;
+  const todo = plNew(pl, bankId); let done = 0, bad = 0;
+  plBusy.set(key, 'Importing 0/' + todo.length + '…'); renderPlaylists();
+  await pool(todo, 2, async path => {
+    try { await importTrack(path, tidyFile(path), bankId); done++; } catch (e) { bad++; }
+    plBusy.set(key, 'Importing ' + (done + bad) + '/' + todo.length + '…'); renderPlaylists();
+  });
+  plBusy.delete(key); renderPlaylists();
+  const bank = S.banks.find(b => b.id === bankId);
+  toast(done + ' song' + (done === 1 ? '' : 's') + ' added to ' + (bank ? bank.name : 'bank') + (bad ? ' · ' + bad + ' failed' : ''));
+}
+const tidyFile = p => p.split('/').pop().replace(/\.[^.]+$/, '').replace(/_/g, ' ').replace(/^\s*\d{1,3}\s*[-._)]\s*/, '').trim() || 'Song';
+$('#sdPlQ').oninput = () => { clearTimeout(plTimer); plTimer = setTimeout(playlistSearch, 250); };
+$('#sdBank').addEventListener('change', renderPlaylists);
+$('#sdPlFile').onclick = () => $('#sdPlTxt').click();
+$('#sdPlTxt').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const pl = await (await postJson('music/playlist/parse', { name: f.name, text: await f.text() }, 30000)).json();
+    plList = [pl, ...plList.filter(x => x.path)]; renderPlaylists();
+  } catch (e) { toast('Could not read that playlist'); }
+};
 $('#sdRescan').onclick = async () => {
   const b = $('#sdRescan'); b.disabled = true; $('#sdMusicInfo').textContent = 'Scanning…';
   try { await postJson('music/rescan', {}, 300000); } catch (e) {}

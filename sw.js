@@ -1,5 +1,5 @@
 // Cache the app shell so it opens with no signal (audio lives in IndexedDB, not here).
-const V = 'rinkdeck-v14';
+const V = 'rinkdeck-v15';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => { e.waitUntil(caches.open(V).then(c => c.addAll(SHELL)).then(() => self.skipWaiting())); });
 self.addEventListener('activate', e => {

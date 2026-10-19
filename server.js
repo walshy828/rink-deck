@@ -186,13 +186,15 @@ async function handleYt(req, res, p) {
 // Layout is usually <Artist>/<Album>/<NN - Song>.mp3, so artist/album/title come from the path for searching;
 // real tags (ffprobe) are read only for the songs that actually get imported.
 let musicIdx = [], musicState = { scanning: false, at: null, error: null };
+let musicByPath = new Map(), playlistIdx = [];       // lowercased path -> index entry; found .m3u/.m3u8 files
+const plCache = new Map();                           // playlist path -> {mtime, at, res}
 const extOf = n => path.extname(n).slice(1).toLowerCase();
 const tidyFile = n => path.basename(n, path.extname(n)).replace(/_/g, ' ').replace(/^\s*\d{1,3}\s*[-._)]\s*|^\s*\d{1,3}\s+(?=\D)/, '').trim();
 
 async function scanMusic() {
   if (musicState.scanning) return;
   musicState = { scanning: true, at: musicState.at, error: null };
-  const out = [], stack = [''];
+  const out = [], pls = [], stack = [''];
   try {
     await fsp.access(MUSIC);
     while (stack.length) {
@@ -201,6 +203,7 @@ async function scanMusic() {
         if (d.name.startsWith('.')) continue;                    // dotfiles, macOS ._ shadows, .AppleDouble
         const r = rel ? rel + '/' + d.name : d.name;
         if (d.isDirectory()) stack.push(r);
+        else if (d.isFile() && /^m3u8?$/.test(extOf(d.name))) pls.push({ p: r, name: path.basename(d.name, path.extname(d.name)) });
         else if (d.isFile() && AUDIO_TYPES[extOf(d.name)]) {
           const parts = r.split('/'), title = tidyFile(d.name) || d.name;
           const artist = parts.length > 1 ? parts[0] : '', album = parts.length > 2 ? parts[parts.length - 2] : '';
@@ -208,7 +211,9 @@ async function scanMusic() {
         }
       }
     }
-    musicIdx = out;
+    musicIdx = out; playlistIdx = pls;
+    musicByPath = new Map(out.map(e => [e.p.toLowerCase(), e]));
+    plCache.clear();
     musicState = { scanning: false, at: Date.now(), error: null };
   } catch (e) {
     musicState = { scanning: false, at: musicState.at, error: e.code === 'ENOENT' ? 'Music folder is not mounted at ' + MUSIC : e.message };
@@ -226,6 +231,51 @@ function searchMusic(q) {
   }
   hits.sort((a, b) => a.score - b.score || a.e.artist.localeCompare(b.e.artist) || a.e.p.localeCompare(b.e.p));
   return hits.slice(0, 60).map(h => ({ path: h.e.p, title: h.e.title, artist: h.e.artist, album: h.e.album }));
+}
+
+/* ---------- playlists (.m3u / .m3u8 files inside the library) ---------- */
+// Entries are matched to indexed songs by path: first relative to the playlist's own folder, then by dropping leading
+// path segments, so absolute paths written on another machine (/volume1/music/Artist/Album/x.mp3) still resolve.
+function resolveEntry(dirRel, raw) {
+  let f = raw.replace(/^file:\/\/(localhost)?/i, '').replace(/\\/g, '/');
+  try { f = decodeURIComponent(f); } catch (e) {}
+  const segs = f.split('/').filter(Boolean);
+  const rel = f.startsWith('/') || /^[a-z]:/i.test(f) ? null : path.posix.normalize(dirRel ? dirRel + '/' + f : f);
+  if (rel && !rel.startsWith('..')) { const e = musicByPath.get(rel.toLowerCase()); if (e) return e; }
+  for (let i = 0; i < segs.length; i++) {
+    const e = musicByPath.get(segs.slice(i).join('/').toLowerCase());
+    if (e) return e;
+  }
+  return null;
+}
+function parseM3U(text, dirRel) {
+  const seen = new Set(), tracks = []; let total = 0, missing = 0;
+  for (let line of text.replace(/^﻿/, '').split(/\r?\n/)) {
+    line = line.trim();
+    if (!line || line.startsWith('#')) continue;
+    total++;
+    const e = resolveEntry(dirRel, line);
+    if (!e) missing++;
+    else if (!seen.has(e.p)) { seen.add(e.p); tracks.push(e.p); }
+  }
+  return { total, missing, tracks };
+}
+async function loadPlaylist(pl) {
+  const st = await fsp.stat(path.join(MUSIC, pl.p)), c = plCache.get(pl.p);
+  if (c && c.mtime === st.mtimeMs) return c.res;
+  if (st.size > 5e6) throw new Error('too large');
+  const text = await fsp.readFile(path.join(MUSIC, pl.p), 'utf8');
+  const res = { path: pl.p, name: pl.name, folder: path.posix.dirname(pl.p) === '.' ? '' : path.posix.dirname(pl.p), ...parseM3U(text, path.posix.dirname(pl.p) === '.' ? '' : path.posix.dirname(pl.p)) };
+  plCache.set(pl.p, { mtime: st.mtimeMs, res });
+  return res;
+}
+async function searchPlaylists(q) {
+  const terms = String(q || '').toLowerCase().split(/\s+/).filter(Boolean);
+  const hits = playlistIdx.filter(p => terms.every(t => p.p.toLowerCase().includes(t)));
+  hits.sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }));
+  const out = [];
+  for (const pl of hits.slice(0, 100)) { try { out.push(await loadPlaylist(pl)); } catch (e) {} }
+  return out;
 }
 
 const probeTags = file => new Promise(resolve => {
@@ -249,6 +299,12 @@ async function handleMusic(req, res, p, url) {
     return send(res, 200, { ok: !musicState.error, error: musicState.error, count: musicIdx.length });
   }
   if (p === '/api/music/search' && req.method === 'GET') return send(res, 200, searchMusic(url.searchParams.get('q')));
+  if (p === '/api/music/playlists' && req.method === 'GET') return send(res, 200, await searchPlaylists(url.searchParams.get('q')));
+  if (p === '/api/music/playlist/parse' && req.method === 'POST') {      // a playlist file picked on the device
+    let b; try { b = JSON.parse((await readBody(req, 5e6)).toString()); } catch (e) { return send(res, 400, 'bad json'); }
+    const name = String((b && b.name) || 'Playlist').replace(/\.m3u8?$/i, '').slice(0, 80);
+    return send(res, 200, { path: '', name, folder: '', ...parseM3U(String((b && b.text) || ''), '') });
+  }
   if (p === '/api/music/import' && req.method === 'POST') {
     let b; try { b = JSON.parse((await readBody(req, 1e5)).toString()); } catch (e) { return send(res, 400, 'bad json'); }
     const rel = String((b && b.path) || '');
