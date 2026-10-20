@@ -333,6 +333,9 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border:0;border-radiu
 #padMenu .er button{width:32px;height:32px;padding:0;justify-content:center;border-radius:50%;border:1px solid var(--line);font-size:14px;font-weight:700}
 #padMenu .er button+button{border-top:1px solid var(--line)}
 #padMenu .er button.on{background:#fff;color:#000}
+#padMenu button.del,#padMenu button.del svg{color:#ff6b62}
+#padMenu button.del.armed{background:rgba(255,69,58,.28);font-weight:750}
+dialog .row .danger.armed{background:#ff453a;color:#fff}
 
 /* ---------- dialogs ---------- */
 dialog{border:1px solid var(--line);border-radius:28px;background:rgba(30,32,48,.82);-webkit-backdrop-filter:blur(34px) saturate(180%);backdrop-filter:blur(34px) saturate(180%);color:var(--text);width:min(94vw,440px);padding:20px;max-height:90vh;overflow-y:auto;box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 30px 80px rgba(0,0,0,.6)}
@@ -554,6 +557,7 @@ const ICONS = {
   layers: '<path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 12 10 5 10-5"/><path d="m2 17 10 5 10-5"/>',
   bolt: '*<path d="M13 2 3 14h8l-1 8 10-12h-8Z"/>',
   toTop: '<path d="M5 4h14"/><path d="m6 14 6-6 6 6"/><path d="M12 8v12"/>',
+  trash: '<path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/>',
   toBottom: '<path d="M5 20h14"/><path d="m6 10 6 6 6-6"/><path d="M12 16V4"/>',
   plus: '<path d="M12 5v14M5 12h14"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
@@ -1292,6 +1296,21 @@ function menuAt(m, el, below) {
   m.style.top = (r.bottom + 6 + mh > innerHeight ? Math.max(8, r.top - mh - 6) : r.bottom + 6) + 'px';
   setTimeout(() => document.addEventListener('pointerdown', onMenuOutside, true), 0);
 }
+// Two-step inline delete: first tap arms the button (text changes), second tap within 4s runs fn. No browser dialogs.
+function armConfirm(btn, armedTxt, fn, idleTxt) {
+  let t = null;
+  const setTxt = x => { const n = btn.lastChild; if (n && n.nodeType === 3) n.textContent = x; else btn.textContent = x; };
+  const reset = () => { clearTimeout(t); t = null; btn.classList.remove('armed'); setTxt(idleTxt); };
+  btn.onclick = e => {
+    if (t) { reset(); fn(); return; }
+    e.stopPropagation(); btn.classList.add('armed'); setTxt(armedTxt); t = setTimeout(reset, 4000);
+  };
+  btn.resetConfirm = reset;
+}
+function deletePad(p) {
+  const b = bankOf(p.id) || curBank(); removePadData(p); b.pads = b.pads.filter(x => x !== p);
+  save(); render();
+}
 function openPadMenu(p, el) {
   closePadMenu();
   const m = document.createElement('div'); m.id = 'padMenu'; m.className = 'glass';
@@ -1310,6 +1329,9 @@ function openPadMenu(p, el) {
   const er = document.createElement('div'); er.className = 'er'; const el0 = document.createElement('span'); el0.innerHTML = ic('bolt', 13) + 'Energy'; er.appendChild(el0);
   [1, 2, 3, 4, 5].forEach(n => { const b = document.createElement('button'); b.textContent = n; if (p.energy === n) b.classList.add('on'); b.onclick = () => { closePadMenu(); setEnergy(p, n); }; er.appendChild(b); });
   m.appendChild(er);
+  const del = document.createElement('button'); del.className = 'del'; del.innerHTML = ic('trash', 20); del.append('Delete song');
+  armConfirm(del, 'Tap again to confirm delete', () => { closePadMenu(); deletePad(p); }, 'Delete song');
+  m.appendChild(del);
   menuAt(m, el);
 }
 
@@ -1531,7 +1553,7 @@ function buildKinds() {
   inp.oninput = () => { pendingColor = hexToRgb(inp.value); l.style.setProperty('--tk', pendingColor); l.classList.add('on'); w.querySelectorAll('button.on').forEach(x => x.classList.remove('on')); };
   w.appendChild(l);
 }
-function openBank(b) { bankEd = b; pendingColor = bankRgb(b); buildKinds(); $('#bdName').value = b.name; $('#bdIcon').value = b.icon || ''; pendingShow = b.show === 'icon' || b.show === 'both' ? b.show : 'name'; buildIcons(); buildShow(); $('#bdDel').style.display = S.banks.length > 1 ? '' : 'none'; $('#bd').showModal(); }
+function openBank(b) { bankEd = b; pendingColor = bankRgb(b); buildKinds(); $('#bdName').value = b.name; $('#bdIcon').value = b.icon || ''; pendingShow = b.show === 'icon' || b.show === 'both' ? b.show : 'name'; buildIcons(); buildShow(); $('#bdDel').style.display = S.banks.length > 1 ? '' : 'none'; $('#bdDel').resetConfirm(); $('#bd').showModal(); }
 $('#bdCancel').onclick = () => $('#bd').close();
 $('#bdSave').onclick = () => { bankEd.name = $('#bdName').value.trim() || 'Bank'; bankEd.color = pendingColor; delete bankEd.kind; bankEd.icon = oneGlyph($('#bdIcon').value); bankEd.show = pendingShow; save(); $('#bd').close(); render(); };
 function moveBank(d) {
@@ -1540,12 +1562,12 @@ function moveBank(d) {
 }
 $('#bdLeft').onclick = () => moveBank(-1);
 $('#bdRight').onclick = () => moveBank(1);
-$('#bdDel').onclick = () => {
-  if (bankEd.pads.length && !confirm('Delete bank and its ' + bankEd.pads.length + ' songs?')) return;
+const bankDelGo = () => {
   bankEd.pads.forEach(removePadData);
   S.banks = S.banks.filter(b => b !== bankEd); S.bank = Math.min(S.bank, S.banks.length - 1);
   save(); $('#bd').close(); render();
 };
+armConfirm($('#bdDel'), 'Confirm delete?', bankDelGo, 'Delete');
 
 /* pad editor */
 let padEd = null, padIsNew = false, pendingFile = null;
@@ -1561,7 +1583,7 @@ function openEditor(p) {
   sel.value = (bankOf(padEd.id) || curBank()).id;
   $('#edFile').value = ''; $('#edFileName').textContent = padEd.fileId ? 'Audio saved (syncs to the server). Pick a file to replace it.' : 'No audio yet.';
   $('#edDel').style.display = padIsNew ? 'none' : ''; $('#edLeft').style.display = $('#edRight').style.display = padIsNew ? 'none' : '';
-  $('#ed').showModal();
+  $('#edDel').resetConfirm(); $('#ed').showModal();
 }
 function showLoud() {
   const l = measured(padEd), a = autoDb(padEd);
@@ -1611,11 +1633,7 @@ $('#edSave').onclick = async () => {
 // Copies in other banks share one audio file, so only delete it when no other pad still uses it.
 function dropFile(id, except) { if (id && !S.banks.some(b => b.pads.some(p => p !== except && p.fileId === id))) idbDel('files', id); }
 function removePadData(p) { dropAudio(p.id); dropFile(p.fileId, p); S.queue = S.queue.filter(x => x !== p.id); }
-$('#edDel').onclick = () => {
-  if (!confirm('Delete "' + padEd.label + '"?')) return;
-  const b = bankOf(padEd.id) || curBank(); removePadData(padEd); b.pads = b.pads.filter(p => p !== padEd);
-  save(); $('#ed').close(); render();
-};
+armConfirm($('#edDel'), 'Confirm delete?', () => { deletePad(padEd); $('#ed').close(); }, 'Delete');
 function movePad(d) {
   const arr = (bankOf(padEd.id) || curBank()).pads, i = arr.indexOf(padEd), j = i + d;
   if (i < 0 || j < 0 || j >= arr.length) return;
