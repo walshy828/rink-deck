@@ -333,6 +333,9 @@ async function handleApi(req, res, url) {
     if (req.method === 'PUT') {
       let body; try { body = JSON.parse((await readBody(req, 5e6)).toString()); } catch (e) { return send(res, 400, 'bad json'); }
       if (!body || !Array.isArray(body.banks)) return send(res, 400, 'bad state');
+      // optimistic concurrency: the client says which revision it started from; if someone else pushed since, hand back the current state to merge
+      if (typeof body.baseRev === 'number' && lib.state && body.baseRev !== lib.rev) return send(res, 409, lib);
+      delete body.baseRev;
       lib = { rev: lib.rev + 1, state: body };
       await writeAtomic(STATE, JSON.stringify(lib));
       gc(body).catch(() => {});

@@ -38,7 +38,6 @@ svg.i{display:block;flex:none}
 .logo{width:32px;height:32px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:linear-gradient(145deg,rgba(var(--k),1),rgba(var(--k),.55));box-shadow:inset 0 1px 0 rgba(255,255,255,.35),0 4px 14px rgba(var(--k),.45);transition:background .6s}
 .brand b{font-size:19px;font-weight:700;letter-spacing:-.3px}
 .tools{display:flex;align-items:center;gap:6px;margin-left:auto}
-.top.eopen .brand{display:none}
 .ib{width:40px;height:40px;border-radius:50%;border:1px solid var(--line);background:var(--glass);color:var(--text);display:flex;align-items:center;justify-content:center;padding:0;-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);transition:background .15s,transform .1s}
 .ib:active{transform:scale(.92);background:var(--glass2)}
 .ib.on{background:#fff;color:#000;border-color:#fff}
@@ -92,7 +91,14 @@ svg.i{display:block;flex:none}
 .seg button.on.q{background:var(--cue);color:#fff}
 
 /* energy chip: just a bolt (plus the value when one is set); tap to fan out the choices, pick one and it folds back */
-.echip{display:flex;align-items:center;gap:5px;min-width:0}
+.echip{display:flex;align-items:center;gap:5px;min-width:0;position:relative}
+.epop{position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:min(280px,calc(100vw - 28px));padding:12px;border-radius:20px;background:rgba(22,24,38,.96);border:1px solid var(--line);box-shadow:0 12px 36px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+.epop .eh{font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim2);margin:0 2px 8px}
+.er5{display:flex;gap:6px}
+.er5 button{flex:1;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:16px;font-weight:700}
+.er5 button.on,.eall.on{background:#fff;color:#000;border-color:#fff}
+.eall{width:100%;height:40px;margin-top:8px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:14px;font-weight:700}
+.ehint{margin:8px 2px 0;font-size:12px;color:var(--dim2)}
 .ib.ech{width:auto;min-width:40px;padding:0 12px;gap:5px;border-radius:20px;font-size:14px;font-weight:700}
 .ib.ech.set{background:#fff;color:#000;border-color:#fff}
 .eo{flex:none;min-width:38px;height:40px;padding:0 10px;border-radius:20px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:14px;font-weight:700}
@@ -593,7 +599,7 @@ let S = {
 };
 let mode = 'play', editing = false, query = '';
 let view = 'grid'; try { view = localStorage.getItem('rd.view') === 'list' ? 'list' : 'grid'; } catch (e) {}
-let sync = { rev: null, dirty: false };   // rev = last server revision we match; dirty = local edits not yet pushed
+let sync = { rev: null, dirty: false, base: null };   // rev = last server revision we match; dirty = local edits not yet pushed; base = copy of the library as of that revision (for merging)
 let edits = 0;
 const fresh = new Set();                  // file ids created this session (never treated as orphans)
 const saveLocal = () => idbPut('meta', 'state', S).catch(() => {});   // device-only change (tab, volume)
@@ -804,34 +810,40 @@ function next(arg) {
 /* ---------- shuffle (per bank) ---------- */
 // bank.shuffle = on/off, bank.up = the pre-picked next tracks (what you see in the Queue dialog)
 const bankOf = id => S.banks.find(b => b.pads.some(p => p.id === id)) || null;
-const shPool = b => b.pads.filter(p => p.fileId && (p.energy || 0) >= (b.minE || 0));
-// Energy: pad.energy = 1-5 (unset = unrated). bank.minE = shuffle only picks songs rated at least this (0 = any; unrated songs are left out while a filter is on).
+// bank.eSel = energy levels shuffle may pick (e.g. [3,4,5]); empty = any. Old bank.minE (N+) is converted on first read.
+const eSel = b => { if (!b.eSel) { b.eSel = b.minE ? [1, 2, 3, 4, 5].filter(n => n >= b.minE) : []; delete b.minE; } return b.eSel; };
+const eOk = (b, p) => { const s = eSel(b); return !s.length || s.includes(p.energy || 0); };
+const eLabel = s => { if (!s.length) return 'Any'; const t = [...s].sort(); let r = '', i = 0; while (i < t.length) { let j = i; while (j + 1 < t.length && t[j + 1] === t[j] + 1) j++; r += (r ? ',' : '') + (j - i >= 2 ? t[i] + '-' + t[j] : t.slice(i, j + 1).join(',')); i = j + 1; } return r; };
+const shPool = b => b.pads.filter(p => p.fileId && eOk(b, p));
+// Energy: pad.energy = 1-5 (unset = unrated). bank.eSel = shuffle only picks songs rated at one of these (empty = any; unrated songs are left out while a filter is on).
 function setEnergy(p, n) { p.energy = (p.energy === n) ? 0 : n; save(); const b = bankOf(p.id); if (b) { shFill(b); } renderGrid(); renderQueue(); toast(p.energy ? 'Energy ' + p.energy + ': ' + p.label : 'Energy cleared: ' + p.label); }
 const eOpen = { hdr: false, np: false };
-// opts: [{n, txt}], cur: selected n (0 = none). Closed = bolt (+ value if set); open = bolt + the choices.
-function echip(host, key, cur, opts, label, pick) {
+function efilter(host, b) {
   host.innerHTML = '';
-  const open = eOpen[key], b = document.createElement('button');
-  b.className = 'ib ech' + (cur && !open ? ' set' : ''); b.setAttribute('aria-label', label); b.setAttribute('aria-expanded', open);
-  b.innerHTML = ic('bolt', 18);
-  const hit = opts.find(o => o.n === cur);
-  if (!open && cur && hit) { const t = document.createElement('span'); t.textContent = hit.txt; b.appendChild(t); }
-  b.onclick = () => { eOpen[key] = !eOpen[key]; renderEchips(); };
-  host.appendChild(b);
-  if (open) opts.forEach(o => {
-    const x = document.createElement('button'); x.className = 'eo' + (o.n === cur ? ' on' : ''); x.textContent = o.txt;
-    x.onclick = () => { eOpen[key] = false; pick(o.n); renderEchips(); };
-    host.appendChild(x);
+  const sel = eSel(b), open = eOpen.hdr, btn = document.createElement('button');
+  btn.className = 'ib ech' + (sel.length ? ' set' : ''); btn.setAttribute('aria-label', 'Shuffle energy filter: ' + eLabel(sel)); btn.setAttribute('aria-expanded', open);
+  btn.innerHTML = ic('bolt', 18) + (sel.length ? '<span>' + eLabel(sel) + '</span>' : '');
+  btn.onclick = () => { eOpen.hdr = !eOpen.hdr; renderEchips(); };
+  host.appendChild(btn);
+  if (!open) return;
+  const pop = document.createElement('div'); pop.className = 'epop';
+  pop.innerHTML = '<div class="eh">Shuffle energy</div>';
+  const row = document.createElement('div'); row.className = 'er5';
+  const apply = ns => { b.eSel = ns; b.up = []; shFill(b); save(); render(); };
+  const all = document.createElement('button'); all.className = 'eall' + (sel.length ? '' : ' on'); all.textContent = 'Any energy';
+  all.onclick = () => { if (sel.length) apply([]); };
+  [1, 2, 3, 4, 5].forEach(n => {
+    const x = document.createElement('button'); x.textContent = n; x.className = sel.includes(n) ? 'on' : ''; x.setAttribute('aria-pressed', sel.includes(n)); x.setAttribute('aria-label', 'Energy ' + n);
+    x.onclick = () => { const ns = sel.includes(n) ? sel.filter(m => m !== n) : [...sel, n].sort(); apply(ns.length === 5 ? [] : ns); };
+    row.appendChild(x);
   });
+  const hint = document.createElement('div'); hint.className = 'ehint'; hint.textContent = sel.length ? 'Only songs rated ' + eLabel(sel) + '. Tap to add or remove.' : 'Tap levels to pick, e.g. 3, 4, 5.';
+  pop.append(row, all, hint); host.appendChild(pop);
 }
 function renderEchips() {
   const b = curBank(), h = $('#eChip');
   h.hidden = !b.shuffle; if (!b.shuffle) eOpen.hdr = false;
-  document.querySelector('.top').classList.toggle('eopen', eOpen.hdr);
-  if (b.shuffle) echip(h, 'hdr', b.minE || 0, [0, 1, 2, 3, 4, 5].map(n => ({ n, txt: n ? n + '+' : 'Any' })), 'Shuffle energy filter', n => {
-    if (n === (b.minE || 0)) return;
-    b.minE = n; b.up = []; shFill(b); save(); render(); toast(n ? 'Shuffle: energy ' + n + '+ only' : 'Shuffle: any energy');
-  });
+    if (b.shuffle) efilter(h, b);
   const rp = current && current._pad && findPad(current._pad.id), d = $('#mEn'), ne = $('#npEn');
   ne.hidden = !rp; ne.innerHTML = '';
   if (!rp) eOpen.np = false;
@@ -980,7 +992,7 @@ function padEl(p, b) {
   }
   if (p.energy) r2.insertAdjacentHTML('beforeend', '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>');
   if (!m.children.length) m.remove();
-  if (b.minE && p.fileId && (p.energy || 0) < b.minE) el.classList.add('dimE');
+  if (eSel(b).length && p.fileId && !eOk(b, p)) el.classList.add('dimE');
   const qi = S.queue.indexOf(p.id);
   if (qi >= 0) { const s = document.createElement('span'); s.className = 'cue'; s.textContent = qi + 1; s.title = 'Up next #' + (qi + 1); r2.insertBefore(s, r2.firstChild); }
 
@@ -1839,6 +1851,47 @@ async function api(path, opt = {}, ms = 10000) {
 }
 const putJson = (path, body) => api(path, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 
+/* three-way merge of the library: base = last state both sides agreed on, loc = this device now, srv = the server now.
+   A part only one side changed keeps that change; if both changed the same value, this device (the newer edit) wins. */
+const jclone = x => x === undefined ? undefined : JSON.parse(JSON.stringify(x));
+function deepEq(a, b) {
+  if (a === b) return true;
+  if (!a || !b || typeof a !== 'object' || typeof b !== 'object' || Array.isArray(a) !== Array.isArray(b)) return false;
+  const ka = Object.keys(a), kb = Object.keys(b);
+  return ka.length === kb.length && ka.every(k => deepEq(a[k], b[k]));
+}
+function mergeVal(b, l, s) {
+  if (deepEq(l, b)) return jclone(s);
+  if (deepEq(s, b) || deepEq(l, s)) return jclone(l);
+  if (l && s && typeof l === 'object' && typeof s === 'object' && !Array.isArray(l) && !Array.isArray(s)) return mergeObj(b && typeof b === 'object' && !Array.isArray(b) ? b : {}, l, s);
+  return jclone(l);
+}
+function mergeObj(b, l, s) {
+  const out = {};
+  for (const k of new Set([...Object.keys(b), ...Object.keys(l), ...Object.keys(s)])) {
+    const v = k === 'pads' && Array.isArray(l[k]) && Array.isArray(s[k]) ? mergeList(b[k] || [], l[k], s[k]) : mergeVal(b[k], l[k], s[k]);
+    if (v !== undefined) out[k] = v;
+  }
+  return out;
+}
+function mergeList(b, l, s) {   // arrays of {id, ...} (banks, pads)
+  const by = a => new Map(a.map(x => [x.id, x]));
+  const B = by(b), L = by(l), S_ = by(s), items = new Map();
+  for (const id of new Set([...B.keys(), ...L.keys(), ...S_.keys()])) {
+    const bi = B.get(id), li = L.get(id), si = S_.get(id);
+    if (li && si) items.set(id, bi ? mergeObj(bi, li, si) : mergeObj({}, li, si));
+    else if (li) { if (!bi || !deepEq(li, bi)) items.set(id, jclone(li)); }          // deleted on the server: drop it unless we changed it here
+    else if (si) { if (!bi || !deepEq(si, bi)) items.set(id, jclone(si)); }          // deleted here: drop it unless the server changed it
+  }
+  const ids = a => a.map(x => x.id), same = (x, y) => x.length === y.length && x.every((v, i) => v === y[i]);
+  const first = same(ids(s), ids(b)) ? ids(l) : ids(s), order = [...first, ...ids(l), ...ids(s)];
+  return [...new Set(order)].filter(id => items.has(id)).map(id => items.get(id));
+}
+function mergeLib(base, loc, srv) {
+  base = base || {};
+  return { banks: mergeList(base.banks || [], loc.banks || [], srv.banks || []), queue: mergeVal(base.queue, loc.queue || [], srv.queue || []) || [] };
+}
+
 async function syncNow(manual) {
   clearTimeout(syncTimer);
   if (syncing) { syncAgain = true; return; }
@@ -1857,7 +1910,7 @@ async function syncNow(manual) {
     if (useServer && !document.querySelector('dialog[open]')) {
       S.banks = srv.state.banks; S.queue = srv.state.queue || [];
       S.bank = Math.max(0, Math.min(S.bank, S.banks.length - 1));
-      sync.rev = srv.rev; sync.dirty = false;
+      sync.rev = srv.rev; sync.dirty = false; sync.base = jclone({ banks: S.banks, queue: S.queue });
       for (const id of [...cache.keys()]) if (!findPad(id)) dropAudio(id);
       saveLocal(); idbPut('meta', 'sync', sync).catch(() => {}); render();
     }
@@ -1876,11 +1929,25 @@ async function syncNow(manual) {
 
     // push the library (after files, so other devices never see pads whose audio isn't there yet)
     if (sync.dirty) {
-      const e0 = edits;
-      const r = await (await putJson('state', { banks: S.banks, queue: S.queue })).json();
-      sync.rev = r.rev; sync.dirty = edits !== e0;
-      idbPut('meta', 'sync', sync).catch(() => {});
-      if (sync.dirty) syncAgain = true;
+      const e0 = edits, pushed = jclone({ banks: S.banks, queue: S.queue });
+      const res = await fetch('api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...pushed, baseRev: sync.rev === null ? srv.rev : sync.rev }) });
+      if (res.status === 409) {                                                     // another device saved first: merge its changes with ours, then push again
+        if (document.querySelector('dialog[open]')) { syncAgain = false; scheduleSync(3000); return; }
+        const cur = await res.json();
+        const m = mergeLib(sync.base || cur.state, { banks: S.banks, queue: S.queue }, cur.state);
+        S.banks = m.banks; S.queue = m.queue;
+        S.bank = Math.max(0, Math.min(S.bank, S.banks.length - 1));
+        sync.rev = cur.rev; sync.base = jclone(cur.state); sync.dirty = true;
+        for (const id of [...cache.keys()]) if (!findPad(id)) dropAudio(id);
+        saveLocal(); idbPut('meta', 'sync', sync).catch(() => {}); render();
+        syncAgain = true;
+      } else {
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const r = await res.json();
+        sync.rev = r.rev; sync.base = pushed; sync.dirty = edits !== e0;
+        idbPut('meta', 'sync', sync).catch(() => {});
+        if (sync.dirty) syncAgain = true;
+      }
     }
 
     // download songs we don't have (full offline mirror)
@@ -1945,7 +2012,7 @@ function initBack() {
   if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--dockH', $('#dock').offsetHeight + 'px')).observe($('#dock'));
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   syncNow();
-  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 30000);
+  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 10000);
   addEventListener('online', () => syncNow());
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { recover(); syncNow(); } });
   addEventListener('pageshow', recover);
