@@ -1639,8 +1639,9 @@ function moveBank(d) {
 $('#bdLeft').onclick = () => moveBank(-1);
 $('#bdRight').onclick = () => moveBank(1);
 const bankDelGo = () => {
+  S.banks = S.banks.filter(b => b !== bankEd);                                      // detach first so dropFile sees only the remaining banks
   bankEd.pads.forEach(removePadData);
-  S.banks = S.banks.filter(b => b !== bankEd); S.bank = Math.min(S.bank, S.banks.length - 1);
+  S.bank = Math.min(S.bank, S.banks.length - 1);
   save(); $('#bd').close(); render();
 };
 armConfirm($('#bdDel'), 'Confirm delete?', bankDelGo, 'Delete');
