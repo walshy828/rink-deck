@@ -881,7 +881,15 @@ function renderEchips() {
   }
 }
 document.addEventListener('pointerdown', e => {
-  if ((eOpen.hdr && !e.target.closest('#eChip')) || (eOpen.np && !e.target.closest('#npEn'))) { if (!e.target.closest('#eChip')) eOpen.hdr = false; eOpen.np = false; renderEchips(); }
+  if ((eOpen.hdr && !e.target.closest('#eChip')) || (eOpen.np && !e.target.closest('#npEn'))) {
+    if (!e.target.closest('#eChip')) eOpen.hdr = false; eOpen.np = false; renderEchips();
+    // tapping off only closes the picker: swallow this press and its click so nothing underneath fires
+    e.stopPropagation(); e.preventDefault();
+    const eat = ev => { ev.stopPropagation(); ev.preventDefault(); };
+    document.addEventListener('click', eat, { capture: true, once: true });
+    setTimeout(() => document.removeEventListener('click', eat, true), 600);
+    return;
+  }
   if (!$('#moreMenu').hidden && !e.target.closest('#moreMenu,#npTap')) setMore(false);
 }, true);
 // The "home" shuffle bank: the shuffle bank you last used. Songs from other banks (goal, intermission) play on top, then shuffle resumes here.
