@@ -988,6 +988,7 @@ function openBankMenu(b, el) {
   if (b.icon) { const ie = document.createElement('span'); ie.className = 'bi'; ie.textContent = b.icon; title.append(ie); }
   title.append(b.name); m.appendChild(title);
   add('pencil', 'Edit bank', () => { closePadMenu(); openBank(b); });
+  add('shuffle', b.shuffle ? 'Shuffle: on (turn off)' : 'Shuffle: off (turn on)', () => { closePadMenu(); toggleShuffle(b); });
   const i = S.banks.indexOf(b);
   const mv = d => () => { bankEd = b; moveBank(d); const nel = $('#tabs button[data-bank="' + S.banks.indexOf(b) + '"]'); if (nel) openBankMenu(b, nel); };
   if (i > 0) add('back', 'Move left', mv(-1));
