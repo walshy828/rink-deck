@@ -214,6 +214,10 @@ body.edit:not(.list) .pad .pi{display:none}
 .pad.over{outline:3px solid #fff;outline-offset:2px}
 .pad.plus{background:var(--glass);border:2px dashed rgba(255,255,255,.28);color:var(--dim);box-shadow:none;align-items:center;justify-content:center;gap:6px;font-weight:600;font-size:14px;text-align:center}
 .pad.plus .ttl{text-shadow:none;flex:none}
+#grid .xh{grid-column:1/-1;display:flex;align-items:center;gap:8px;margin-top:10px;padding:6px 2px;border-bottom:1px solid var(--line);font-size:13px;color:var(--dim);cursor:pointer}
+#grid .xh i{width:10px;height:10px;border-radius:50%;background:rgb(var(--k))}
+#grid .xh b{color:var(--text);font-weight:600}
+#grid .xh span{margin-left:auto}
 #empty{grid-column:1/-1;text-align:center;color:var(--dim);padding:48px 16px;line-height:1.6}
 #empty b{color:var(--text)}
 
@@ -415,7 +419,7 @@ dialog button.btn:disabled{opacity:.5}
       <div id="eChip" class="echip" hidden></div>
     </div>
   </header>
-  <div id="searchRow"><input id="searchIn" type="search" placeholder="Search this bank…" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="searchX" class="ib" aria-label="Close search" data-ic="x"></button></div>
+  <div id="searchRow"><input id="searchIn" type="search" placeholder="Search songs…" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="searchX" class="ib" aria-label="Close search" data-ic="x"></button></div>
   <nav id="tabs"></nav>
   <div id="stage">
     <main id="grid"></main>
@@ -1039,9 +1043,9 @@ function renderBankBar() {
 }
 let swOpen = null;   // close function of the song row whose Delete button is showing
 document.addEventListener('pointerdown', e => { if (swOpen && !e.target.closest('.pad.sw')) swOpen(); }, true);
-function padEl(p, b) {
+function padEl(p, b, foreign) {
   const el = document.createElement('button'); el.className = 'pad'; el.dataset.id = p.id;
-  const grip = editing || view === 'list';
+  const grip = (editing || view === 'list') && !foreign;
   const gh = grip ? '<b class="grip" aria-label="Drag to reorder">' + ic('grip', 18) + '</b>' : '', inList = view === 'list';
   el.innerHTML = (inList ? '' : '') +
     '<span class="r1">' + (inList ? '' : gh) + '<span class="pi"><span class="pl">' + ic('play', 13) + '</span><span class="pp">' + ic('plus', 15) + '</span><span class="eq"><i></i><i></i><i></i></span></span><span class="ttl"></span></span><span class="r2"><span class="meta"></span></span><span class="prog"></span>' + (inList ? gh : '');
@@ -1182,9 +1186,22 @@ function renderGrid() {
   if (editing) {
     const plus = document.createElement('button'); plus.className = 'pad plus'; plus.innerHTML = ic('plus', 18) + '<span class="ttl">Add song</span>'; plus.onclick = () => openEditor(null); g.appendChild(plus);
     const bulk = document.createElement('button'); bulk.className = 'pad plus'; bulk.innerHTML = ic('music', 18) + '<span class="ttl">Add many files</span>'; bulk.onclick = () => $('#bulk').click(); g.appendChild(bulk);
-  } else if (q && !g.querySelector('.pad')) {
-    const e = document.createElement('div'); e.id = 'empty'; e.textContent = 'No songs in “' + b.name + '” match “' + query.trim() + '”.'; g.appendChild(e);
-  } else if (!b.pads.length) {
+  }
+  // Search also lists matches from other banks, grouped under a bank header
+  if (q) S.banks.forEach(ob => {
+    if (ob === b) return;
+    const hits = ob.pads.filter(p => (p.label || '').toLowerCase().includes(q));
+    if (!hits.length) return;
+    const h = document.createElement('div'); h.className = 'xh'; h.style.setProperty('--k', bankRgb(ob));
+    h.innerHTML = '<i></i><b></b><span>' + hits.length + '</span>'; h.querySelector('b').textContent = (ob.icon ? ob.icon + ' ' : '') + ob.name;
+    h.onclick = () => { S.bank = S.banks.indexOf(ob); saveLocal(); warm(ob); render(); };
+    g.appendChild(h);
+    hits.forEach(p => g.appendChild(padEl(p, ob, true)));
+  });
+  if (!editing && q && !g.querySelector('.pad')) {
+    const e = document.createElement('div'); e.id = 'empty'; e.textContent = 'No songs match “' + query.trim() + '”.'; g.appendChild(e);
+  }
+  if (!editing && !q && !b.pads.length) {
     const e = document.createElement('div'); e.id = 'empty'; e.innerHTML = 'No songs in this bank yet.<br>Open the menu (☰), then tap <b>Add song</b> or <b>Import songs</b>.'; g.appendChild(e);
   }
   refresh();
