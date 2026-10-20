@@ -199,6 +199,16 @@ body.list .pad.plus{min-height:48px;flex-direction:row;justify-content:center}
 /* edit mode */
 body.edit .pad:not(.plus){border-style:dashed;border-color:rgba(255,255,255,.4)}
 body.edit:not(.list) .pad .pi{display:none}
+.pad.sw{touch-action:pan-y}
+.pad.sw>*:not(.sa){transform:translateX(var(--sx,0px));transition:transform .2s ease}
+.pad.sw.swd>*:not(.sa){transition:none}
+.pad .sa{position:absolute;top:0;bottom:0;display:flex;align-items:center;justify-content:center;gap:6px;overflow:hidden;white-space:nowrap;color:#fff;font-size:13px;font-weight:700;transition:width .2s ease,background .15s}
+.pad.swd .sa{transition:background .15s}
+.pad .sa.l{left:0;width:var(--lw,0px);background:rgba(var(--k),.55)}
+.pad .sa.l.ready{background:var(--cue)}
+.pad .sa.l.done{background:#2e9d57}
+.pad .sa.r{right:0;width:var(--rw,0px);background:#e5484d;cursor:pointer}
+.pad .sa.r span{display:inline-flex;align-items:center;gap:6px}
 .pad .grip{flex:none;width:32px;height:36px;margin:-4px 0 -4px -6px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,.85);background:rgba(0,0,0,.28);touch-action:none;cursor:grab}
 .pad.lift{z-index:20;transition:none;box-shadow:0 20px 50px rgba(0,0,0,.6);opacity:.95}
 .pad.over{outline:3px solid #fff;outline-offset:2px}
@@ -1027,6 +1037,8 @@ function renderBankBar() {
   $('#bkInfo').innerHTML = '<div class="l1"><span class="kt"><i></i><b></b></span><span>' + n + (n === 1 ? ' song' : ' songs') + '</span></div><div class="l2"></div>';
   $('#bkInfo .kt b').textContent = (b.icon ? b.icon + ' ' : '') + b.name; $('#bkInfo .l2').textContent = hint;
 }
+let swOpen = null;   // close function of the song row whose Delete button is showing
+document.addEventListener('pointerdown', e => { if (swOpen && !e.target.closest('.pad.sw')) swOpen(); }, true);
 function padEl(p, b) {
   const el = document.createElement('button'); el.className = 'pad'; el.dataset.id = p.id;
   const grip = editing || view === 'list';
@@ -1065,7 +1077,54 @@ function padEl(p, b) {
   } else {
     el.oncontextmenu = e => e.preventDefault();
   }
-  el.onclick = () => { if (lpFired) { lpFired = false; return; } padTap(p); };
+  let swSwallow = false, swClose = null;
+  if (!editing && inList) {
+    const OPEN = 88, T = 90;
+    el.classList.add('sw');
+    const L = document.createElement('div'), R = document.createElement('div');
+    L.className = 'sa l'; R.className = 'sa r'; R.setAttribute('role', 'button');
+    L.innerHTML = '<span>' + ic('listPlus', 20) + '</span><span>Up Next</span>';
+    R.innerHTML = '<span style="width:' + OPEN + 'px;justify-content:center">' + ic('trash', 20) + 'Delete</span>';
+    el.prepend(L, R);
+    let x0 = 0, y0 = 0, st = null, dx = 0, base = 0, ready = false;
+    const setX = v => { dx = v; el.style.setProperty('--sx', v + 'px'); el.style.setProperty('--lw', Math.max(v, 0) + 'px'); el.style.setProperty('--rw', Math.max(-v, 0) + 'px'); };
+    swClose = () => { setX(0); if (swOpen === swClose) swOpen = null; };
+    R.onpointerdown = e => e.stopPropagation();
+    R.onclick = e => { e.stopPropagation(); deletePad(p); };
+    el.addEventListener('pointerdown', e => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      if (e.target.closest('.sa,.grip')) return;
+      if (swOpen && swOpen !== swClose) swOpen();
+      x0 = e.clientX; y0 = e.clientY; st = 'wait'; base = swOpen === swClose ? -OPEN : 0; ready = false;
+    });
+    el.addEventListener('pointermove', e => {
+      if (!st) return;
+      const mx = e.clientX - x0, my = e.clientY - y0;
+      if (st === 'wait') {
+        if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my)) { st = 'swipe'; lpCancel(); el.setPointerCapture(e.pointerId); el.classList.add('swd'); }
+        else { if (Math.abs(my) > 10) st = null; return; }
+      }
+      setX(Math.max(-OPEN * 1.4, Math.min(p.fileId ? 150 : 0, base + mx)));
+      const r = dx >= T; if (r !== ready) { ready = r; L.classList.toggle('ready', r); if (r && navigator.vibrate) navigator.vibrate(10); }
+    });
+    const end = () => {
+      const was = st; st = null; if (was !== 'swipe') return;
+      el.classList.remove('swd'); swSwallow = true; setTimeout(() => { swSwallow = false; }, 100);
+      if (dx >= T && p.fileId) {
+        S.queue.push(p.id); save();
+        L.classList.add('done'); L.lastChild.textContent = 'Added #' + S.queue.length; L.firstChild.innerHTML = ic('listPlus', 20);
+        setX(0); toast('Cued #' + S.queue.length + ': ' + p.label);
+        setTimeout(() => { renderQueue(); renderGrid(); }, 450);
+      } else if (dx < -OPEN / 2) { setX(-OPEN); swOpen = swClose; }
+      else swClose();
+    };
+    el.addEventListener('pointerup', end); el.addEventListener('pointercancel', end);
+  }
+  el.onclick = () => {
+    if (swSwallow) return;
+    if (swClose && swOpen === swClose) { swClose(); return; }
+    if (lpFired) { lpFired = false; return; } padTap(p);
+  };
   return el;
 }
 // Edit mode: drag the handle. Drop on another tile = reorder, drop on a bank tab = move to that bank.
