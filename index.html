@@ -683,8 +683,7 @@ const LOOKAHEAD = 10;
 function warm(bank) { if (!bank.shuffle) bank.pads.forEach(p => audioFor(p)); lookahead(); }
 function lookaheadIds() {
   const ids = S.queue.slice(0, LOOKAHEAD);
-  const sb = shufBank(false);
-  if (sb && sb.up) ids.push(...sb.up.slice(0, 3));
+  if (shOn()) ids.push(...(S.shUp || []).slice(0, 3));
   return ids;
 }
 function lookahead() { lookaheadIds().forEach(id => { const pad = findPad(id); if (pad) audioFor(pad); }); }
@@ -791,7 +790,7 @@ function xfCheck() {
   if (!xfSec || !a || a._xf || a.paused || a.loop || document.hidden || !a._pad || a._pad.layer || a._pad.id === '__test') return;
   if (!isFinite(a.duration) || a.duration < xfSec * 3) return;   // too short to blend (horns, effects): leave to onEnded
   const left = a.duration - a.currentTime;
-  if (left > xfSec || !(S.queue.length || shufBank())) return;
+  if (left > xfSec || !(S.queue.length || shOn())) return;
   a._xf = true;
   const pad = takeNext(true); if (!pad) return;
   if (pad.id === a._pad.id) { S.queue.unshift(pad.id); return; }   // same song again: let it finish, onEnded restarts it
@@ -810,7 +809,7 @@ async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   if (!pad.layer && !isTest) {
     stopAll(250, blend ? [a, blend.from] : a);
     const b = bankOf(pad.id);
-    if (b) { lastBankId = b.id; if (b.shuffle) { homeId = b.id; b.last = pad.id; b.up = (b.up || []).filter(x => x !== pad.id); shFill(b); save(); renderQueue(); } }
+    if (b) { lastBankId = b.id; if (b.shuffle) { S.shLast = pad.id; S.shUp = (S.shUp || []).filter(x => x !== pad.id); shFill(); save(); renderQueue(); } }
   }
   clearInterval(a._fade); a._used = Date.now(); a._xf = false;
   a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
@@ -829,7 +828,7 @@ async function play(pad, fromQueue = false, fromStart = false, blend = null) {
 function onEnded(a) {
   active.delete(a);
   if (a._once && a._pad) dropAudio(a._pad.id);   // played through: nothing goes back to it, free the decoder
-  if (current === a) { current = null; if (a._pad && a._pad.id !== '__test' && (S.queue.length || shufBank())) next(true); }
+  if (current === a) { current = null; if (a._pad && a._pad.id !== '__test' && (S.queue.length || shOn())) next(true); }
   refresh();
 }
 // Pops the next song: the cued queue first, then the shuffle bank's pre-picked list. null = nothing cued.
@@ -838,11 +837,10 @@ function takeNext(arg) {
     const pad = findPad(S.queue.shift());
     if (pad && pad.fileId) return pad;
   }
-  const b = shufBank(arg !== true);
-  if (b) {
-    shFill(b);
-    const pad = b.up.length && findPad(b.up[0]);
-    if (pad) { b.up.shift(); return pad; }
+  if (shOn()) {
+    shFill();
+    const pad = S.shUp.length && findPad(S.shUp[0]);
+    if (pad) { S.shUp.shift(); return pad; }
   }
   return null;
 }
@@ -853,16 +851,20 @@ function next(arg) {
   stopAll(400); play(pad, true);
 }
 
-/* ---------- shuffle (per bank) ---------- */
-// bank.shuffle = on/off, bank.up = the pre-picked next tracks (what you see in the Queue dialog)
+/* ---------- shuffle (banks with shuffle on share one list) ---------- */
+// bank.shuffle = on/off; S.shUp = the pre-picked next tracks across all shuffled banks (what you see in the Queue dialog)
 const bankOf = id => S.banks.find(b => b.pads.some(p => p.id === id)) || null;
 // bank.eSel = energy levels shuffle may pick (e.g. [3,4,5]); empty = any. Old bank.minE (N+) is converted on first read.
 const eSel = b => { if (!b.eSel) { b.eSel = b.minE ? [1, 2, 3, 4, 5].filter(n => n >= b.minE) : []; delete b.minE; } return b.eSel; };
 const eOk = (b, p) => { const s = eSel(b); return !s.length || s.includes(p.energy || 0); };
 const eLabel = s => { if (!s.length) return 'Any'; const t = [...s].sort(); let r = '', i = 0; while (i < t.length) { let j = i; while (j + 1 < t.length && t[j + 1] === t[j] + 1) j++; r += (r ? ',' : '') + (j - i >= 2 ? t[i] + '-' + t[j] : t.slice(i, j + 1).join(',')); i = j + 1; } return r; };
 const shPool = b => b.pads.filter(p => p.fileId && eOk(b, p));
+// Every shuffled bank feeds one shared Up Next list (S.shUp): picks come from all of them together, each bank keeping its own energy filter.
+const shGroup = () => S.banks.filter(b => b.shuffle && shPool(b).length);
+const shOn = () => shGroup().length > 0;
+const gPool = () => shGroup().flatMap(shPool);
 // Energy: pad.energy = 1-5 (unset = unrated). bank.eSel = shuffle only picks songs rated at one of these (empty = any; unrated songs are left out while a filter is on).
-function setEnergy(p, n) { p.energy = (p.energy === n) ? 0 : n; save(); const b = bankOf(p.id); if (b) { shFill(b); } renderGrid(); renderQueue(); toast(p.energy ? 'Energy ' + p.energy + ': ' + p.label : 'Energy cleared: ' + p.label); }
+function setEnergy(p, n) { p.energy = (p.energy === n) ? 0 : n; save(); shFill(); renderGrid(); renderQueue(); toast(p.energy ? 'Energy ' + p.energy + ': ' + p.label : 'Energy cleared: ' + p.label); }
 const eOpen = { hdr: false, np: false };
 function efilter(host, b) {
   host.innerHTML = '';
@@ -875,7 +877,7 @@ function efilter(host, b) {
   const pop = document.createElement('div'); pop.className = 'epop';
   pop.innerHTML = '<div class="eh">Shuffle energy</div>';
   const row = document.createElement('div'); row.className = 'er5';
-  const apply = ns => { b.eSel = ns; b.up = []; shFill(b); save(); render(); };
+  const apply = ns => { b.eSel = ns; S.shUp = []; shFill(); save(); render(); };
   const all = document.createElement('button'); all.className = 'eall' + (sel.length ? '' : ' on'); all.textContent = 'Any energy';
   all.onclick = () => { if (sel.length) apply([]); };
   [1, 2, 3, 4, 5].forEach(n => {
@@ -924,31 +926,20 @@ document.addEventListener('pointerdown', e => {
   }
   if (!$('#moreMenu').hidden && !e.target.closest('#moreMenu,#npTap')) setMore(false);
 }, true);
-// The "home" shuffle bank: the shuffle bank you last used. Songs from other banks (goal, intermission) play on top, then shuffle resumes here.
-let homeId = null;
-function shufBank(onScreenFirst) {
-  const ok = b => b && b.shuffle && shPool(b).length;
-  const c = curBank();
-  if (onScreenFirst && ok(c)) return c;
-  const h = S.banks.find(b => b.id === homeId);
-  if (ok(h)) return h;
-  return S.banks.find(ok) || null;
-}
 const SH_PAGE = 10;               // songs shown at first, and added each time you scroll to the end of the shuffle list
-let shWant = {};                  // bank id -> how many shuffle picks to keep lined up (not saved; resets when the panel closes)
-function shPick(b, exclude) {
-  const pool = shPool(b);
+let shWant = SH_PAGE;             // how many shuffle picks to keep lined up (not saved; resets when the panel closes)
+function shPick(exclude) {
+  const pool = gPool(), last = S.shLast;
   let c = pool.filter(p => !exclude.includes(p.id));
-  if (!c.length) { const prev = exclude[exclude.length - 1] || b.last; c = pool.filter(p => pool.length < 2 || p.id !== prev); }  // pool used up: let songs repeat, just not back-to-back
-  else if (c.length > 1 && b.last && !exclude.length) c = c.filter(p => p.id !== b.last);
+  if (!c.length) { const prev = exclude[exclude.length - 1] || last; c = pool.filter(p => pool.length < 2 || p.id !== prev); }  // pool used up: let songs repeat, just not back-to-back
+  else if (c.length > 1 && last && !exclude.length) c = c.filter(p => p.id !== last);
   return c.length ? c[Math.floor(Math.random() * c.length)].id : null;
 }
-function shFill(b) {
-  if (!b.shuffle) return;
-  const ok = new Set(shPool(b).map(p => p.id));
-  b.up = (b.up || []).filter(id => ok.has(id));
-  const want = ok.size ? (shWant[b.id] || SH_PAGE) : 0;
-  while (b.up.length < want) { const id = shPick(b, b.up); if (!id) break; b.up.push(id); }
+function shFill() {
+  const ok = new Set(gPool().map(p => p.id));
+  S.shUp = (S.shUp || []).filter(id => ok.has(id));
+  const want = ok.size ? shWant : 0;
+  while (S.shUp.length < want) { const id = shPick(S.shUp); if (!id) break; S.shUp.push(id); }
 }
 
 /* ---------- wake lock + media session ---------- */
@@ -1137,7 +1128,7 @@ function renderGrid() {
 let qView = false, qDrag = false;
 const wide = matchMedia('(min-width:900px)');
 const qOpen = () => qView || wide.matches;
-function setQView(on) { if (on) setMore(false); qView = on; if (!on) shWant = {}; document.body.classList.toggle('qv', on); $('#mQueue').classList.toggle('on', on); if (on) renderQueue(); }
+function setQView(on) { if (on) setMore(false); qView = on; if (!on) shWant = SH_PAGE; document.body.classList.toggle('qv', on); $('#mQueue').classList.toggle('on', on); if (on) renderQueue(); }
 wide.addEventListener && wide.addEventListener('change', () => renderQueue());
 // Rows with a drag handle (reorder), swipe-left (delete) and tap (play now). o: {onPlay, onDelete, onMove, extra:[{txt, fn}]}
 function qRows(ul, ids, o) {
@@ -1199,8 +1190,8 @@ function playNow(p) { stopAll(300); play(p, true); }
 function renderQueue() {
   for (const qc of [$('#qCount')]) { qc.textContent = S.queue.length; qc.hidden = !S.queue.length; }
   $('#mShuffle').setAttribute('aria-checked', !!curBank().shuffle);
-  const b = shufBank(true) || curBank(); shFill(b);
-  const sb = shufBank(true), np = S.queue.length ? findPad(S.queue[0]) : sb && sb.up.length ? findPad(sb.up[0]) : null;
+  shFill();
+  const np = S.queue.length ? findPad(S.queue[0]) : shOn() && S.shUp.length ? findPad(S.shUp[0]) : null;
   $('#npNext').textContent = np ? (S.queue.length ? 'Up next: ' : 'Shuffle next: ') + np.label : 'Nothing cued';
   if (!qOpen() || qDrag) return;
   S.queue = S.queue.filter(findPad);
@@ -1211,31 +1202,29 @@ function renderQueue() {
     onDelete: i => { S.queue.splice(i, 1); save(); renderQueue(); renderGrid(); },
     onMove: (from, to) => { moveIn(S.queue, from, to); save(); renderGrid(); }
   });
-  renderShuffle(b);
+  renderShuffle();
 }
-function renderShuffle(b) {
-  $('#shTitle').innerHTML = '<i class="dot" style="--k:' + bankRgb(b) + '"></i>'; $('#shTitle').append('Shuffle · ' + b.name);
-  $('#shToggle').setAttribute('aria-checked', !!b.shuffle);
-  $('#shToggle').onclick = () => toggleShuffle(b); shMoreBank = b;
+function renderShuffle() {
+  const g = shGroup(), b = curBank(), lead = g[0] || b;
+  $('#shTitle').innerHTML = '<i class="dot" style="--k:' + bankRgb(lead) + '"></i>'; $('#shTitle').append('Shuffle · ' + (g.length ? g.map(x => x.name).join(' + ') : b.name));
+  $('#shToggle').setAttribute('aria-checked', !!b.shuffle); $('#shToggle').setAttribute('aria-label', 'Shuffle ' + b.name);
+  $('#shToggle').onclick = () => toggleShuffle(b);
   const ul = $('#shlist'); ul.innerHTML = '';
-  if (!b.shuffle) return;
-  if (!b.up.length) { const li = document.createElement('li'); li.innerHTML = '<span class="hint">No songs available to shuffle in this bank.</span>'; ul.appendChild(li); }
-  qRows(ul, b.up, {
+  if (!g.length) { if (b.shuffle) { const li = document.createElement('li'); li.innerHTML = '<span class="hint">No songs available to shuffle in this bank.</span>'; ul.appendChild(li); } return; }
+  qRows(ul, S.shUp, {
     delTxt: 'Skip',
     onPlay: (i, id, p) => playNow(p),
-    onDelete: (i, id, p) => { b.up.splice(i, 1); toast('Removed from queue: ' + p.label); shFill(b); save(); renderQueue(); },
-    onMove: (from, to) => { moveIn(b.up, from, to); save(); }
+    onDelete: (i, id, p) => { S.shUp.splice(i, 1); toast('Removed from queue: ' + p.label); shFill(); save(); renderQueue(); },
+    onMove: (from, to) => { moveIn(S.shUp, from, to); save(); }
   });
   shMoreObs.unobserve($('#shMore')); shMoreObs.observe($('#shMore'));  // re-arm so it fires again if the end is still in view
 }
-let shMoreBank = null;
 const shMoreObs = new IntersectionObserver(es => {
-  if (!es.some(e => e.isIntersecting) || !shMoreBank || !shMoreBank.shuffle || qDrag) return;
-  const b = shMoreBank, n = shPool(b).length; if (!n) return;
-  shWant[b.id] = (shWant[b.id] || SH_PAGE) + SH_PAGE; shFill(b); save(); renderQueue();
+  if (!es.some(e => e.isIntersecting) || !shOn() || qDrag) return;
+  shWant += SH_PAGE; shFill(); save(); renderQueue();
 });
 function toggleShuffle(b) {
-  b.shuffle = !b.shuffle; if (b.shuffle) { homeId = b.id; b.up = []; shFill(b); }
+  b.shuffle = !b.shuffle; S.shUp = []; shFill();
   save(); renderTabs(); renderEchips(); renderQueue();
   toast('Shuffle ' + (b.shuffle ? 'on · ' : 'off · ') + b.name);
 }
