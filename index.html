@@ -118,6 +118,8 @@ body.side #side{transform:none;visibility:visible;transition:transform .3s cubic
 #side .vseg,#side .seg{width:100%}
 #side .vseg button{flex:1}
 #side .seg button{flex:1;padding:9px 0}
+body.top .cuetag{opacity:.45;text-decoration:line-through}
+#side .seg button.on[data-c=top]{background:var(--cue);color:#fff}
 .srow{display:flex;align-items:center;gap:12px;width:100%;margin-bottom:6px;padding:13px 14px;border-radius:16px;border:1px solid var(--line);background:var(--glass);color:var(--text);font-size:16px;font-weight:600;text-align:left}
 .srow:active{background:var(--glass2)}
 .srow svg{color:var(--dim)}
@@ -437,6 +439,9 @@ dialog button.btn:disabled{opacity:.5}
   <div class="vseg" id="view" role="group" aria-label="Song layout"><button data-v="grid" class="on" aria-label="Card view" data-ic="grid" data-sz="17"></button><button data-v="list" aria-label="List view" data-ic="rows" data-sz="17"></button></div>
   <div class="slab">Tapping a song</div>
   <div class="seg" id="mode" role="group" aria-label="What tapping a song does"><button data-m="play" class="on">Play</button><button data-m="queue" class="q">Add to Up Next</button></div>
+  <div class="slab">Song start</div>
+  <div class="seg" id="cueMode" role="group" aria-label="Where songs start playing"><button data-c="cue" class="on">Cue points</button><button data-c="top">From the top</button></div>
+  <div class="hint" id="cueHint"></div>
   <div class="slab">Output level: <span id="outVal">0 dB</span></div>
   <input id="outDb" type="range" min="-12" max="12" step="1" value="0" aria-label="Overall output boost or cut" style="width:100%">
   <div class="hint">Boost or cut every song, on top of each song's own setting. Saved on this device.</div>
@@ -757,6 +762,8 @@ function xfCheck() {
 }
 setInterval(() => { try { xfCheck(); } catch (e) { console.error('xf', e); } }, 200);
 
+// Song start mode: false = each song's cue point (default), true = always from 0:00. Device-only, like crossfade.
+let fromTop = false; try { fromTop = localStorage.getItem('rd.top') === '1'; } catch (e) {}
 async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   const r = await audioFor(pad);
   if (!r) { toast(pad.fileId ? 'Audio missing' : 'No audio on this pad'); return; }
@@ -769,7 +776,8 @@ async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   }
   clearInterval(a._fade); a._used = Date.now(); a._xf = false;
   a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
-  const st = fromStart ? 0 : (pad.start || 0);
+  // fromStart: true = force 0:00, 'cue' = force the song's cue point, otherwise follow the Song start mode (editor preview always uses the cue point)
+  const st = fromStart === true ? 0 : fromStart === 'cue' || isTest || !fromTop ? (pad.start || 0) : 0;
   a.loop = !!pad.loop; setVol(a, S.master); if (st > 0 || blend) a.volume = 0;
   try { a.currentTime = st; } catch (e) {}
   try { await a.play(); } catch (e) { setVol(a, S.master); toast('Tap again — browser blocked audio'); return; }
@@ -988,7 +996,7 @@ function padEl(p, b) {
   else {
     if (p.layer) tag('<em class="fx">' + ic('layers', 12) + 'Layer</em>');
     if (p.loop) tag('<em>' + ic('repeat', 12) + 'Loop</em>');
-    if (p.start) tag('<em>' + ic('back', 12) + fmt(p.start) + '</em>');
+    if (p.start) tag('<em class="cuetag">' + ic('back', 12) + fmt(p.start) + '</em>');
   }
   if (p.energy) r2.insertAdjacentHTML('beforeend', '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>');
   if (!m.children.length) m.remove();
@@ -1250,7 +1258,10 @@ function openPadMenu(p, el) {
   const add = (icon, txt, fn) => { const b = document.createElement('button'); b.innerHTML = ic(icon, 20); b.append(txt); b.onclick = () => { closePadMenu(); fn(); }; m.appendChild(b); };
   const title = document.createElement('div'); title.className = 'mt'; title.textContent = p.label || '(unnamed)'; m.appendChild(title);
   if (p.fileId) add('listPlus', 'Add to Up Next', () => { S.queue.push(p.id); save(); renderQueue(); renderGrid(); toast('Cued #' + S.queue.length + ': ' + p.label); });
-  if (p.fileId && p.start > 0) add('back', 'Play from start', () => play(p, false, true));
+  if (p.fileId && p.start > 0) {
+    if (fromTop) add('back', 'Play from cue point', () => play(p, false, 'cue'));
+    else add('back', 'Play from start', () => play(p, false, true));
+  }
   if (S.banks.length > 1) add('copy', 'Add to another bank…', () => openCopyMenu(p, el));
   add('pencil', 'Edit', () => openEditor(p));
   const arr = (bankOf(p.id) || curBank()).pads, pi = arr.indexOf(p);
@@ -1390,6 +1401,17 @@ $('#outDb').oninput = e => {
   active.forEach(a => { if (!a._fade) setVol(a, S.master); });
 };
 
+function setCueMode(top, persist) {
+  fromTop = top;
+  if (persist) try { localStorage.setItem('rd.top', top ? '1' : '0'); } catch (e) {}
+  document.body.classList.toggle('top', top);
+  document.querySelectorAll('#cueMode button').forEach(x => x.classList.toggle('on', (x.dataset.c === 'top') === top));
+  $('#cueHint').textContent = top
+    ? 'Every song plays from 0:00, ignoring cue points (shown struck through). Long-press a song to play it from its cue point. Saved on this device.'
+    : "Songs jump to the cue point set in each song's settings. Saved on this device.";
+}
+document.querySelectorAll('#cueMode button').forEach(b => b.onclick = () => setCueMode(b.dataset.c === 'top', true));
+setCueMode(fromTop, false);
 const showXf = () => { $('#xfVal').textContent = xfSec ? xfSec + ' s' : 'Off'; };
 $('#xfSec').value = xfSec; showXf();
 $('#xfSec').oninput = e => {
