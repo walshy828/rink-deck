@@ -98,6 +98,12 @@ svg.i{display:block;flex:none}
 .er5 button{flex:1;height:44px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:16px;font-weight:700}
 .er5 button.on,.eall.on{background:#fff;color:#000;border-color:#fff}
 .eall{width:100%;height:40px;margin-top:8px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:14px;font-weight:700}
+.ehide{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;margin-top:8px;padding:8px 12px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:14px;font-weight:700;text-align:left}
+.ehide:disabled{opacity:.4}
+.ehide i{flex:none;position:relative;width:38px;height:22px;border-radius:11px;background:var(--glass2);transition:background .2s}
+.ehide i::after{content:'';position:absolute;top:2px;left:2px;width:18px;height:18px;border-radius:50%;background:#fff;transition:transform .2s}
+.ehide.on i{background:var(--ok)}
+.ehide.on i::after{transform:translateX(16px)}
 .ehint{margin:8px 2px 0;font-size:12px;color:var(--dim2)}
 .ib.ech{width:auto;min-width:40px;padding:0 12px;gap:5px;border-radius:20px;font-size:14px;font-weight:700}
 .ib.ech.set{background:#fff;color:#000;border-color:#fff}
@@ -845,8 +851,11 @@ function efilter(host, b) {
     x.onclick = () => { const ns = sel.includes(n) ? sel.filter(m => m !== n) : [...sel, n].sort(); apply(ns.length === 5 ? [] : ns); };
     row.appendChild(x);
   });
-  const hint = document.createElement('div'); hint.className = 'ehint'; hint.textContent = sel.length ? 'Only songs rated ' + eLabel(sel) + '. Tap to add or remove.' : 'Tap levels to pick, e.g. 3, 4, 5.';
-  pop.append(row, all, hint); host.appendChild(pop);
+  const hint = document.createElement('div'); hint.className = 'ehint'; hint.textContent = sel.length ? 'Shuffle only plays songs rated ' + eLabel(sel) + (b.eHide ? '; others are hidden.' : '; others are dimmed.') : 'Tap levels to pick, e.g. 3, 4, 5.';
+  const hide = document.createElement('button'); hide.className = 'ehide' + (b.eHide ? ' on' : ''); hide.disabled = !sel.length; hide.setAttribute('role', 'switch'); hide.setAttribute('aria-checked', !!b.eHide);
+  hide.innerHTML = '<span>Hide other songs</span><i></i>';
+  hide.onclick = () => { b.eHide = !b.eHide; save(); render(); };
+  pop.append(row, all, hide, hint); host.appendChild(pop);
 }
 function renderEchips() {
   const b = curBank(), h = $('#eChip');
@@ -1073,7 +1082,8 @@ function movePadEdge(p, top) {
 function renderGrid() {
   const g = $('#grid'); g.innerHTML = ''; const b = curBank();
   const q = query.trim().toLowerCase();
-  b.pads.filter(p => !q || (p.label || '').toLowerCase().includes(q)).forEach(p => g.appendChild(padEl(p, b)));
+  const hideE = b.eHide && eSel(b).length;
+  b.pads.filter(p => (!q || (p.label || '').toLowerCase().includes(q)) && !(hideE && p.fileId && !eOk(b, p))).forEach(p => g.appendChild(padEl(p, b)));
   if (editing) {
     const plus = document.createElement('button'); plus.className = 'pad plus'; plus.innerHTML = ic('plus', 18) + '<span class="ttl">Add song</span>'; plus.onclick = () => openEditor(null); g.appendChild(plus);
     const bulk = document.createElement('button'); bulk.className = 'pad plus'; bulk.innerHTML = ic('music', 18) + '<span class="ttl">Add many files</span>'; bulk.onclick = () => $('#bulk').click(); g.appendChild(bulk);
