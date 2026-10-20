@@ -451,6 +451,12 @@ dialog button.btn:disabled{opacity:.5}
   <div class="slab">Output level: <span id="outVal">0 dB</span></div>
   <input id="outDb" type="range" min="-12" max="12" step="1" value="0" aria-label="Overall output boost or cut" style="width:100%">
   <div class="hint">Boost or cut every song, on top of each song's own setting. Saved on this device.</div>
+  <div class="slab">Auto-level quiet songs</div>
+  <div class="seg" id="autoMode" role="group" aria-label="Automatically boost quiet songs"><button data-a="off" class="on">Off</button><button data-a="on">On</button></div>
+  <div class="slab">Target loudness: <span id="tgtVal"></span></div>
+  <input id="tgtDb" type="range" min="-24" max="-8" step="0.5" value="-14" aria-label="Target loudness" style="width:100%">
+  <div class="hint" id="autoHint"></div>
+  <button id="anaBtn" class="srow"><span data-ic="sync" data-sz="20"></span><span>Measure song loudness</span><small id="anaTxt"></small></button>
   <div class="slab">Crossfade: <span id="xfVal">4 s</span></div>
   <input id="xfSec" type="range" min="0" max="12" step="1" value="4" aria-label="Crossfade length between songs" style="width:100%">
   <div class="hint">Blend the end of a song into the next one in Up Next or shuffle. 0 = off. Saved on this device.</div>
@@ -470,6 +476,7 @@ dialog button.btn:disabled{opacity:.5}
   <label for="edStart">Start at (seconds) — skip the intro, jump to the chorus</label><input id="edStart" type="number" min="0" step="0.1" value="0">
   <label for="edGain">Loudness boost / cut: <b id="edGainVal">0 dB</b></label><input id="edGain" type="range" min="-12" max="12" step="1" value="0">
   <div class="hint">Raise quiet songs, lower loud ones. Applies every time this song plays.</div>
+  <div class="hint" id="edLoud"></div>
   <label class="chk"><span>Layer on top<small>Doesn't stop other audio — for horns &amp; effects</small></span><input id="edLayer" type="checkbox"></label>
   <label class="chk"><span>Loop</span><input id="edLoop" type="checkbox"></label>
   <div class="row"><button id="edLeft">◀ Earlier</button><button id="edTest">Test</button><button id="edRight">Later ▶</button></div>
@@ -687,14 +694,39 @@ function lookahead() { lookaheadIds().forEach(id => { const pad = findPad(id); i
 let boostCtx = null;
 // outDb = app-wide boost/cut on top of each song's own setting; device-only (it depends on the speakers), so it lives in localStorage.
 let outDb = 0; try { outDb = Math.max(-12, Math.min(12, +localStorage.getItem('rd.out') || 0)); } catch (e) {}
-const padGain = a => Math.pow(10, (((a._pad && a._pad.gain) || 0) + outDb) / 20);
+// Auto-level: songs are measured once on the server (EBU R128 integrated LUFS + true peak, stored as pad.ld). A song quieter
+// than the target is boosted up to it, never cut, never past what its peak allows (the limiter below catches the last few dB).
+// The target is the loudest quarter of the library unless set by hand. Device-only, like the output level.
+const AUTO_MAX = 12, AUTO_CEIL = 3;
+let autoOn = false, tgtDb = null;
+try { autoOn = localStorage.getItem('rd.auto') === '1'; const t = localStorage.getItem('rd.tgt'); if (t !== null && t !== '') tgtDb = Math.max(-24, Math.min(-8, +t)); } catch (e) {}
+const measured = pad => pad && pad.ld && pad.ld.f === pad.fileId && pad.ld.i != null ? pad.ld : null;
+const allPads = () => S.banks.flatMap(b => b.pads);
+function autoTarget() {
+  if (tgtDb !== null) return tgtDb;
+  const v = allPads().map(measured).filter(Boolean).map(l => l.i).sort((a, b) => a - b);
+  return v.length ? Math.max(-20, Math.min(-9, v[Math.floor(0.75 * (v.length - 1))])) : -14;
+}
+function autoDb(pad) {
+  const l = autoOn && pad && !pad.layer && measured(pad); if (!l) return 0;
+  let g = autoTarget() - l.i;
+  if (l.tp != null) g = Math.min(g, AUTO_CEIL - l.tp);
+  return Math.round(Math.max(0, Math.min(AUTO_MAX, g)) * 10) / 10;
+}
+const padGain = a => Math.pow(10, (((a._pad && a._pad.gain) || 0) + outDb + autoDb(a._pad)) / 20);
+let boostLim = null;
 function setVol(a, v) {
   const g = padGain(a);
   if (g > 1 && !a._gn) {
     try {
       boostCtx = boostCtx || new (window.AudioContext || window.webkitAudioContext)();
       a._gn = boostCtx.createGain();
-      boostCtx.createMediaElementSource(a).connect(a._gn); a._gn.connect(boostCtx.destination);
+      if (!boostLim) {   // brick-wall-ish limiter so boosted peaks don't clip
+        boostLim = boostCtx.createDynamicsCompressor();
+        boostLim.threshold.value = -2; boostLim.knee.value = 0; boostLim.ratio.value = 20; boostLim.attack.value = 0.003; boostLim.release.value = 0.15;
+        boostLim.connect(boostCtx.destination);
+      }
+      boostCtx.createMediaElementSource(a).connect(a._gn); a._gn.connect(boostLim);
     } catch (e) {}
   }
   if (a._gn) { if (boostCtx.state === 'suspended') boostCtx.resume().catch(() => {}); a._gn.gain.value = Math.max(1, g); }
@@ -1419,6 +1451,58 @@ $('#outDb').oninput = e => {
   active.forEach(a => { if (!a._fade) setVol(a, S.master); });
 };
 
+const fmtDb = (v, d = 1) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d);
+function showAuto() {
+  document.querySelectorAll('#autoMode button').forEach(x => x.classList.toggle('on', (x.dataset.a === 'on') === autoOn));
+  const t = autoTarget(), ms = allPads().filter(p => p.fileId), got = ms.map(measured).filter(Boolean).map(l => l.i).sort((a, b) => a - b);
+  $('#tgtVal').textContent = (tgtDb === null ? 'Auto · ' : '') + fmtDb(t, 1).replace('+', '') + ' LUFS';
+  $('#tgtDb').value = t;
+  const boosted = autoOn ? ms.filter(p => autoDb(p) > 0).length : 0;
+  $('#autoHint').textContent = (got.length
+    ? got.length + ' of ' + ms.length + ' songs measured (quietest ' + fmtDb(got[0], 1).replace('+', '') + ', median ' + fmtDb(got[Math.floor((got.length - 1) / 2)], 1).replace('+', '') + ' LUFS). ' + (autoOn ? boosted + ' boosted. ' : '')
+    : 'No songs measured yet. ') + 'Quiet songs are raised to the target, loud songs are never turned down. Auto = the loudest quarter of your library. Saved on this device.';
+  const el = $('#anaTxt'); if (el && !analyzing) el.textContent = got.length < ms.length ? (ms.length - got.length) + ' to do' : '';
+}
+const refreshVols = () => active.forEach(a => { if (!a._fade) setVol(a, S.master); });
+document.querySelectorAll('#autoMode button').forEach(b => b.onclick = () => {
+  autoOn = b.dataset.a === 'on';
+  try { localStorage.setItem('rd.auto', autoOn ? '1' : '0'); } catch (e) {}
+  showAuto(); refreshVols();
+});
+$('#tgtDb').oninput = e => {
+  tgtDb = +e.target.value;
+  try { localStorage.setItem('rd.tgt', tgtDb); } catch (err) {}
+  showAuto(); refreshVols();
+};
+$('#tgtDb').ondblclick = () => { tgtDb = null; try { localStorage.removeItem('rd.tgt'); } catch (e) {} showAuto(); refreshVols(); };
+
+// Measure songs the server has but we haven't: one at a time, results ride along with the library to every device.
+let analyzing = false; const anaFailed = new Set();
+async function analyzeMissing(manual) {
+  if (analyzing || (!manual && !allPads().some(p => p.fileId && !anaFailed.has(p.fileId) && !(p.ld && p.ld.f === p.fileId)))) return;
+  analyzing = true;
+  const status = t => { const el = $('#anaTxt'); if (el) el.textContent = t; };
+  try {
+    const onSrv = new Set((await (await api('files')).json()).map(f => f.id));
+    const todo = () => [...new Set(allPads().filter(p => p.fileId && onSrv.has(p.fileId) && !anaFailed.has(p.fileId) && !(p.ld && p.ld.f === p.fileId)).map(p => p.fileId))];
+    const total = todo().length; let n = 0, dirty = false;
+    for (let id; (id = todo()[0]);) {
+      status((++n) + '/' + total);
+      try {
+        const r = await (await api('files/' + id + '/loudness', {}, 300000)).json();
+        allPads().forEach(p => { if (p.fileId === id) p.ld = { f: id, i: r.i, tp: r.tp }; });
+        dirty = true;
+        if (n % 8 === 0) { save(); showAuto(); refreshVols(); dirty = false; }
+      } catch (e) { anaFailed.add(id); }
+    }
+    if (dirty) { save(); refreshVols(); }
+    if (manual) toast(total ? 'Measured ' + (total - anaFailed.size) + ' song' + (total === 1 ? '' : 's') : 'All songs already measured');
+  } catch (e) { if (manual) toast('Server unreachable · try again later'); }
+  finally { analyzing = false; showAuto(); if (document.querySelector('#ed[open]')) showLoud(); }
+}
+$('#anaBtn').onclick = () => { anaFailed.clear(); analyzeMissing(true); };
+showAuto();
+
 function setCueMode(top, persist) {
   fromTop = top;
   if (persist) try { localStorage.setItem('rd.top', top ? '1' : '0'); } catch (e) {}
@@ -1481,13 +1565,19 @@ function openEditor(p) {
   $('#edTitle').textContent = padIsNew ? 'New song' : 'Edit song';
   $('#edName').value = padEd.label; $('#edStart').value = padEd.start || 0;
   $('#edLayer').checked = !!padEd.layer; $('#edLoop').checked = !!padEd.loop;
-  $('#edGain').value = padEd.gain || 0; showGain();
+  $('#edGain').value = padEd.gain || 0; showGain(); showLoud();
   const sel = $('#edBank'); sel.innerHTML = '';
   S.banks.forEach(b => { const o = document.createElement('option'); o.value = b.id; o.textContent = b.name; sel.appendChild(o); });
   sel.value = (bankOf(padEd.id) || curBank()).id;
   $('#edFile').value = ''; $('#edFileName').textContent = padEd.fileId ? 'Audio saved (syncs to the server). Pick a file to replace it.' : 'No audio yet.';
   $('#edDel').style.display = padIsNew ? 'none' : ''; $('#edLeft').style.display = $('#edRight').style.display = padIsNew ? 'none' : '';
   $('#ed').showModal();
+}
+function showLoud() {
+  const l = measured(padEd), a = autoDb(padEd);
+  $('#edLoud').textContent = !padEd.fileId ? '' : l
+    ? 'Measured ' + fmtDb(l.i, 1).replace('+', '') + ' LUFS' + (autoOn ? ' · auto-level adds ' + fmtDb(a, 1) + ' dB' : ' · auto-level is off') + ' (on top of the setting above).'
+    : 'Loudness not measured yet (happens after the song syncs to the server).';
 }
 const showGain = () => { const g = +$('#edGain').value; $('#edGainVal').textContent = (g > 0 ? '+' : '') + g + ' dB'; };
 $('#edGain').oninput = () => {
@@ -2010,6 +2100,7 @@ async function syncNow(manual) {
 
     haveCount = ids.filter(id => have.has(id)).length;
     setSync('✓ Synced');
+    showAuto(); analyzeMissing();
     if (manual) toast('Synced · ' + haveCount + ' song' + (haveCount === 1 ? '' : 's') + ' available offline');
   } catch (e) {
     setSync('⚠ Offline', true);
@@ -2048,7 +2139,7 @@ function initBack() {
 (async function () {
   try { const st = await idbGet('meta', 'state'); if (st && st.banks) S = st; } catch (e) {}
   try { const sy = await idbGet('meta', 'sync'); if (sy) sync = sy; } catch (e) {}
-  $('#vol').value = S.master; render(); warm(curBank()); safeTick();
+  $('#vol').value = S.master; showAuto(); render(); warm(curBank()); safeTick();
   if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--dockH', $('#dock').offsetHeight + 'px')).observe($('#dock'));
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   syncNow();

@@ -63,7 +63,7 @@ function referencedIds(state) {
 async function gc(state) {
   const keep = referencedIds(state), now = Date.now();
   for (const name of await fsp.readdir(AUDIO)) {
-    const id = name.replace(/\.type$/, '');
+    const id = name.replace(/\.(type|loud)$/, '');
     if (!ID_RE.test(id) || keep.has(id)) continue;
     try {
       const st = await fsp.stat(path.join(AUDIO, name));
@@ -75,10 +75,34 @@ async function gc(state) {
 async function listFiles() {
   const out = [];
   for (const name of await fsp.readdir(AUDIO)) {
-    if (!ID_RE.test(name)) continue;       // skips .type and .tmp files
+    if (!ID_RE.test(name)) continue;       // skips .type, .loud and .tmp files
     try { out.push({ id: name, size: (await fsp.stat(path.join(AUDIO, name))).size }); } catch (e) {}
   }
   return out;
+}
+
+/* ---------- loudness (EBU R128) ---------- */
+// Integrated loudness (LUFS) and true peak (dBTP) per song, measured once with ffmpeg's ebur128 filter and cached
+// next to the audio as <id>.loud. Analyses run one at a time so a big library can't pin the CPU.
+let loudChain = Promise.resolve();
+const measureLoud = file => new Promise(resolve => {
+  execFile('ffmpeg', ['-hide_banner', '-nostats', '-nostdin', '-i', file, '-vn', '-af', 'ebur128=peak=true:framelog=quiet', '-f', 'null', '-'],
+    { timeout: 180000, maxBuffer: 4e6 }, (err, out, errout) => {
+      const num = re => { const m = re.exec(errout || ''); return m && isFinite(+m[1]) ? +m[1] : null; };
+      const i = num(/Integrated loudness:\s*I:\s*(-?[\d.]+|-?inf)/), tp = num(/True peak:\s*Peak:\s*(-?[\d.]+|-?inf)/);
+      resolve(err && i === null ? null : { i, tp });
+    });
+});
+function loudnessOf(id) {
+  const run = loudChain.then(async () => {
+    const file = path.join(AUDIO, id);
+    try { return JSON.parse(await fsp.readFile(file + '.loud', 'utf8')); } catch (e) {}
+    const r = await measureLoud(file);
+    if (r) await writeAtomic(file + '.loud', JSON.stringify(r)).catch(() => {});
+    return r;
+  });
+  loudChain = run.catch(() => {});
+  return run;
 }
 
 async function serveFile(req, res, id) {
@@ -343,6 +367,13 @@ async function handleApi(req, res, url) {
     }
   }
   if (p === '/api/files' && req.method === 'GET') return send(res, 200, await listFiles());
+  const lm = /^\/api\/files\/([^/]+)\/loudness$/.exec(p);
+  if (lm && req.method === 'GET') {
+    if (!ID_RE.test(lm[1])) return send(res, 400, 'bad id');
+    if (!fs.existsSync(path.join(AUDIO, lm[1]))) return send(res, 404, 'not found');
+    const r = await loudnessOf(lm[1]);
+    return r ? send(res, 200, r) : send(res, 500, 'analysis failed');
+  }
   const m = /^\/api\/files\/([^/]+)$/.exec(p);
   if (m) {
     const id = m[1];
@@ -361,6 +392,7 @@ async function handleApi(req, res, url) {
     if (req.method === 'DELETE') {
       await fsp.unlink(path.join(AUDIO, id)).catch(() => {});
       await fsp.unlink(path.join(AUDIO, id + '.type')).catch(() => {});
+      await fsp.unlink(path.join(AUDIO, id + '.loud')).catch(() => {});
       return send(res, 200, { id });
     }
   }
