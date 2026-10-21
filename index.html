@@ -827,7 +827,7 @@ async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   if (!pad.layer && !isTest) {
     stopAll(250, blend ? [a, blend.from] : a);
     const b = bankOf(pad.id);
-    if (b) { lastBankId = b.id; if (b.shuffle) { S.shLast = pad.id; S.shUp = (S.shUp || []).filter(x => x !== pad.id); shFill(); save(); renderQueue(); } }
+    if (b) { lastBankId = b.id; if (b.shuffle) { S.shLast = pad.id; shMark(pad.id); S.shUp = (S.shUp || []).filter(x => x !== pad.id); shFill(); save(); renderQueue(); } }
   }
   clearInterval(a._fade); a._used = Date.now(); a._xf = false;
   a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
@@ -946,11 +946,32 @@ document.addEventListener('pointerdown', e => {
 }, true);
 const SH_PAGE = 10;               // songs shown at first, and added each time you scroll to the end of the shuffle list
 let shWant = SH_PAGE;             // how many shuffle picks to keep lined up (not saved; resets when the panel closes)
+// Fresh-first shuffle: S.shPlayed = songs played this round (oldest first). Unplayed songs are picked until about 2/3 of the pool
+// has played; after that, played songs (longest-ago first) are mixed in at a growing rate. When everything has played, a new round
+// starts, keeping the most recent third marked so they don't come straight back.
+const SH_MIX_AT = 2 / 3, SH_MIX_MAX = 0.5;
+function shMark(id) {
+  const pool = new Set(gPool().map(p => p.id));
+  let pl = (S.shPlayed || []).filter(x => x !== id && pool.has(x)); pl.push(id);
+  if (pool.size > 1 && pl.length >= pool.size) pl = pl.slice(-Math.ceil(pool.size / 3));
+  S.shPlayed = pl;
+}
 function shPick(exclude) {
-  const pool = gPool(), last = S.shLast;
-  let c = pool.filter(p => !exclude.includes(p.id));
-  if (!c.length) { const prev = exclude[exclude.length - 1] || last; c = pool.filter(p => pool.length < 2 || p.id !== prev); }  // pool used up: let songs repeat, just not back-to-back
-  else if (c.length > 1 && last && !exclude.length) c = c.filter(p => p.id !== last);
+  const pool = gPool(), last = S.shLast, ids = new Set(pool.map(p => p.id));
+  const pl = (S.shPlayed || []).filter(x => ids.has(x)), played = new Set(pl);
+  const fresh = pool.filter(p => !played.has(p.id) && !exclude.includes(p.id));
+  const old = pl.filter(x => !exclude.includes(x));
+  const f = pool.length ? pl.length / pool.length : 0;
+  let mix = f < SH_MIX_AT ? 0 : Math.min(SH_MIX_MAX, (f - SH_MIX_AT) / (1 - SH_MIX_AT) * SH_MIX_MAX * 1.5);
+  if (!fresh.length) mix = 1;
+  if (!old.length) mix = 0;
+  if (fresh.length || old.length) {
+    if (Math.random() < mix) { const n = Math.max(1, Math.ceil(old.length / 2)); return old[Math.floor(Math.random() * n)]; }  // from the longer-ago half
+    if (fresh.length) return fresh[Math.floor(Math.random() * fresh.length)].id;
+  }
+  // everything is already lined up: let songs repeat, just not back-to-back
+  const prev = exclude[exclude.length - 1] || last;
+  const c = pool.filter(p => pool.length < 2 || p.id !== prev);
   return c.length ? c[Math.floor(Math.random() * c.length)].id : null;
 }
 function shFill() {
