@@ -956,8 +956,9 @@ function shMark(id) {
   if (pool.size > 1 && pl.length >= pool.size) pl = pl.slice(-Math.ceil(pool.size / 3));
   S.shPlayed = pl;
 }
-function shPick(exclude) {
-  const pool = gPool(), last = S.shLast, ids = new Set(pool.map(p => p.id));
+// Picks a song from one pool using the fresh-first rules above.
+function shPickFrom(pool, exclude, prev) {
+  const ids = new Set(pool.map(p => p.id));
   const pl = (S.shPlayed || []).filter(x => ids.has(x)), played = new Set(pl);
   const fresh = pool.filter(p => !played.has(p.id) && !exclude.includes(p.id));
   const old = pl.filter(x => !exclude.includes(x));
@@ -970,9 +971,28 @@ function shPick(exclude) {
     if (fresh.length) return fresh[Math.floor(Math.random() * fresh.length)].id;
   }
   // everything is already lined up: let songs repeat, just not back-to-back
-  const prev = exclude[exclude.length - 1] || last;
   const c = pool.filter(p => pool.length < 2 || p.id !== prev);
   return c.length ? c[Math.floor(Math.random() * c.length)].id : null;
+}
+// With several shuffled banks the bank is chosen first (weighted by pool size, damped by how often it appeared in the last few songs,
+// and never more than SH_RUN in a row) so banks stay interleaved instead of clustering; the song is then picked within that bank.
+const SH_RUN = 2, SH_RECENT = 6;
+function shPick(exclude) {
+  const g = shGroup(), prev = exclude[exclude.length - 1] || S.shLast;
+  if (g.length < 2) return shPickFrom(gPool(), exclude, prev);
+  const recent = [S.shLast, ...exclude].filter(Boolean).slice(-SH_RECENT).map(id => (bankOf(id) || {}).id);
+  let run = 0; while (run < recent.length && recent[recent.length - 1 - run] === recent[recent.length - 1]) run++;
+  const total = g.reduce((n, b) => n + shPool(b).length, 0);
+  let cand = g.map(b => ({ b, w: shPool(b).length / total / (1 + 1.5 * recent.filter(x => x === b.id).length) }));
+  if (run >= SH_RUN) { const alt = cand.filter(c => c.b.id !== recent[recent.length - 1]); if (alt.length) cand = alt; }
+  while (cand.length) {
+    let r = Math.random() * cand.reduce((n, c) => n + c.w, 0), i = 0;
+    while (i < cand.length - 1 && (r -= cand[i].w) >= 0) i++;
+    const id = shPickFrom(shPool(cand[i].b), exclude, prev);
+    if (id) return id;
+    cand.splice(i, 1);
+  }
+  return null;
 }
 function shFill() {
   const ok = new Set(gPool().map(p => p.id));
