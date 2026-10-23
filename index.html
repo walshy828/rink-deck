@@ -287,6 +287,7 @@ body.qv #qpanel{transform:none;opacity:1;pointer-events:auto}
 .prog2{display:flex;align-items:center;gap:10px;margin:6px 0 2px;font-size:12px;color:var(--dim);font-variant-numeric:tabular-nums;position:relative}
 .prog2 span{flex:none;min-width:34px}
 .prog2 span:last-child{text-align:right}
+#npLimit{font-size:11px;color:var(--accent,var(--dim));min-height:13px;white-space:nowrap}
 #bar{flex:1;height:26px;padding:10px 0;background:rgba(255,255,255,.2);background-clip:content-box;border-radius:3px;touch-action:none;cursor:pointer;position:relative}
 #bar i{display:block;height:100%;width:0;background:#fff;border-radius:3px;position:relative}
 #bar i::after{content:'';position:absolute;right:-8px;top:50%;width:16px;height:16px;margin-top:-8px;border-radius:50%;background:#fff;box-shadow:0 2px 8px rgba(0,0,0,.5);opacity:0;transition:opacity .2s}
@@ -438,7 +439,7 @@ dialog button.btn:disabled{opacity:.5}
       <div class="nm"><div id="npKind">Ready</div><div id="npName">Nothing playing</div><div id="npNext"></div></div>
       <div id="npEn" hidden></div>
     </div>
-    <div class="prog2"><span id="tCur"></span><div id="bar"><i></i></div><span id="npTime"></span></div>
+    <div class="prog2"><span id="tCur"></span><div id="bar"><i></i></div><span id="npTimeBox"><div id="npTime"></div><div id="npLimit"></div></span></div>
     <div class="ctl">
       <button class="stop idle" id="stopBtn"></button>
       <button class="next" id="nextBtn"><span>Next</span><span data-ic="next" data-sz="20"></span></button>
@@ -814,11 +815,19 @@ function crossfade(o, n, ms) {
 let nxBlend = false, mxOn = false, mxSec = 60;
 try { nxBlend = localStorage.getItem('rd.nb') === '1'; mxOn = localStorage.getItem('rd.mo') === '1'; const v = localStorage.getItem('rd.ms'); if (v !== null) mxSec = Math.max(10, Math.min(300, +v || 60)); } catch (e) {}
 const blendable = a => a && !a.paused && !a.loop && !document.hidden && a._pad && !a._pad.layer && a._pad.id !== '__test';
+// Seconds until the time limit skips this song, or null when it won't: limit off, nothing cued, looping/layered,
+// or the song ends on its own first (shorter than the limit, or fewer seconds left than the limit allows).
+function limitLeft(a) {
+  if (!mxOn || !a || a.paused || a.loop || !a._pad || a._pad.layer || a._pad.id === '__test') return null;
+  if (!(S.queue.length || shOn())) return null;
+  const left = mxSec - (a.currentTime - (a._st || 0));
+  if (isFinite(a.duration) && a.duration - a.currentTime <= left) return null;
+  return Math.max(0, left);
+}
 function mxCheck() {
   const a = current;
-  if (!mxOn || !a || a._xf || a.paused || a.loop || !a._pad || a._pad.layer || a._pad.id === '__test') return;
-  if (!(S.queue.length || shOn())) return;
-  const left = mxSec - (a.currentTime - (a._st || 0));
+  if (!a || a._xf) return;
+  const left = limitLeft(a); if (left === null) return;
   const fade = blendable(a) && xfSec && isFinite(a.duration) && a.duration >= xfSec * 3 ? xfSec : 0;
   if (left > fade) return;
   a._xf = true;
@@ -1415,8 +1424,9 @@ function tick() {
     $('#bar i').style.width = pct + '%';
     $('#tCur').textContent = fmt(a.currentTime);
     $('#npTime').textContent = a.loop ? 'loop' : '-' + fmt(a.duration - a.currentTime);
+    const lim = limitLeft(a); $('#npLimit').textContent = lim === null ? '' : 'skip ' + fmt(lim);
     if (curEl) curEl.style.setProperty('--prog', pct + '%');
-  } else { $('#bar i').style.width = '0'; $('#tCur').textContent = ''; $('#npTime').textContent = ''; }
+  } else { $('#bar i').style.width = '0'; $('#tCur').textContent = ''; $('#npTime').textContent = ''; $('#npLimit').textContent = ''; }
   requestAnimationFrame(safeTick);
 }
 function safeTick() { try { tick(); } catch (e) { console.error('tick', e); requestAnimationFrame(safeTick); } }
