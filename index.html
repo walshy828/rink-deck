@@ -477,6 +477,13 @@ dialog button.btn:disabled{opacity:.5}
   <div class="slab">Crossfade: <span id="xfVal">4 s</span></div>
   <input id="xfSec" type="range" min="0" max="12" step="1" value="4" aria-label="Crossfade length between songs" style="width:100%">
   <div class="hint">Blend the end of a song into the next one in Up Next or shuffle. 0 = off. Saved on this device.</div>
+  <div class="slab">Blend on Next button</div>
+  <div class="seg" id="nbMode" role="group" aria-label="Crossfade when pressing Next"><button data-n="off" class="on">Off</button><button data-n="on">On</button></div>
+  <div class="hint">Pressing Next blends out the current song and blends in the next, using the crossfade length above (needs crossfade above 0). Saved on this device.</div>
+  <div class="slab">Song time limit: <span id="mxVal">60 s</span></div>
+  <div class="seg" id="mxMode" role="group" aria-label="Limit how long each song plays"><button data-m="off" class="on">Off</button><button data-m="on">On</button></div>
+  <input id="mxSec" type="range" min="10" max="300" step="5" value="60" aria-label="Maximum seconds each song plays" style="width:100%">
+  <div class="hint">Moves on to the next song in Up Next or shuffle after this many seconds of play, blending if crossfade is on. Saved on this device.</div>
   <div class="slab">Library</div>
   <button id="editBtn" class="srow"><span data-ic="pencil" data-sz="20"></span><span id="editTxt">Edit songs &amp; banks</span></button>
   <button id="addBtn" class="srow"><span data-ic="plus" data-sz="20"></span><span>Add song</span></button>
@@ -803,6 +810,24 @@ function crossfade(o, n, ms) {
     refresh();
   }, 30);
 }
+// Next-button blend and per-song time limit: device-only settings like crossfade.
+let nxBlend = false, mxOn = false, mxSec = 60;
+try { nxBlend = localStorage.getItem('rd.nb') === '1'; mxOn = localStorage.getItem('rd.mo') === '1'; const v = localStorage.getItem('rd.ms'); if (v !== null) mxSec = Math.max(10, Math.min(300, +v || 60)); } catch (e) {}
+const blendable = a => a && !a.paused && !a.loop && !document.hidden && a._pad && !a._pad.layer && a._pad.id !== '__test';
+function mxCheck() {
+  const a = current;
+  if (!mxOn || !a || a._xf || a.paused || a.loop || !a._pad || a._pad.layer || a._pad.id === '__test') return;
+  if (!(S.queue.length || shOn())) return;
+  const left = mxSec - (a.currentTime - (a._st || 0));
+  const fade = blendable(a) && xfSec && isFinite(a.duration) && a.duration >= xfSec * 3 ? xfSec : 0;
+  if (left > fade) return;
+  a._xf = true;
+  const pad = takeNext(true); if (!pad) return;
+  save(); renderQueue(); renderGrid();
+  if (fade && pad.id !== a._pad.id) play(pad, true, false, { from: a, ms: Math.max(300, left * 1000) });
+  else { stopAll(400); play(pad, true); }
+}
+setInterval(() => { try { mxCheck(); } catch (e) { console.error('mx', e); } }, 250);
 function xfCheck() {
   const a = current;
   if (!xfSec || !a || a._xf || a.paused || a.loop || document.hidden || !a._pad || a._pad.layer || a._pad.id === '__test') return;
@@ -830,9 +855,11 @@ async function play(pad, fromQueue = false, fromStart = false, blend = null) {
     if (b) { lastBankId = b.id; if (b.shuffle) { S.shLast = pad.id; shMark(pad.id); S.shUp = (S.shUp || []).filter(x => x !== pad.id); shFill(); save(); renderQueue(); } }
   }
   clearInterval(a._fade); a._used = Date.now(); a._xf = false;
+  a._st = 0;
   a._once = fromQueue || !!(bankOf(pad.id) || {}).shuffle;   // queue/shuffle songs are one-shot; tap pads stay loaded
   // fromStart: true = force 0:00, 'cue' = force the song's cue point, otherwise follow the Song start mode (editor preview always uses the cue point)
   const st = fromStart === true ? 0 : fromStart === 'cue' || isTest || !fromTop ? (pad.start || 0) : 0;
+  a._st = st;
   a.loop = !!pad.loop; setVol(a, S.master); if (st > 0 || blend) a.volume = 0;
   try { a.currentTime = st; } catch (e) {}
   try { await a.play(); } catch (e) { setVol(a, S.master); toast('Tap again — browser blocked audio'); return; }
@@ -862,10 +889,11 @@ function takeNext(arg) {
   }
   return null;
 }
-function next(arg) {
-  const pad = takeNext(arg);
+function next(arg, manual) {
+  const cur = current, pad = takeNext(arg);
   save(); renderQueue(); renderGrid();
   if (!pad) { toast('Nothing cued'); return; }
+  if (manual && nxBlend && xfSec && blendable(cur) && pad.id !== cur._pad.id) { cur._xf = true; play(pad, true, false, { from: cur, ms: xfSec * 1000 }); return; }
   stopAll(400); play(pad, true);
 }
 
@@ -1013,7 +1041,7 @@ function setMedia(pad) {
     ms.metadata = new MediaMetadata({ title: pad.label || 'Track', artist: 'Rink Deck', album: 'Game day',
       artwork: [{ src: 'icon-192.png', sizes: '192x192', type: 'image/png' }, { src: 'icon-512.png', sizes: '512x512', type: 'image/png' }] });
     ms.playbackState = 'playing';
-    ms.setActionHandler('nexttrack', () => next());
+    ms.setActionHandler('nexttrack', () => next(false, true));
     ms.setActionHandler('pause', pauseCurrent);
     ms.setActionHandler('play', resumeCurrent);
     ms.setActionHandler('stop', pauseCurrent);
@@ -1566,7 +1594,7 @@ $('#searchBtn').onclick = () => setSearch(!$('#searchRow').classList.contains('s
 $('#searchX').onclick = () => setSearch(false);
 $('#searchIn').oninput = e => { query = e.target.value; renderGrid(); };
 $('#searchIn').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setSearch(false); };
-$('#nextBtn').onclick = next;
+$('#nextBtn').onclick = () => next(false, true);
 $('#mQueue').onclick = () => { setMore(false); setQView(!qView); };
 $('#mShuffle').onclick = () => toggleShuffle(curBank());
 $('#qClear').onclick = () => { S.queue = []; save(); renderQueue(); renderGrid(); };
@@ -1649,6 +1677,26 @@ $('#xfSec').oninput = e => {
   xfSec = +e.target.value; showXf();
   try { localStorage.setItem('rd.xf', xfSec); } catch (err) {}
 };
+
+function showNb() { document.querySelectorAll('#nbMode button').forEach(x => x.classList.toggle('on', (x.dataset.n === 'on') === nxBlend)); }
+document.querySelectorAll('#nbMode button').forEach(b => b.onclick = () => {
+  nxBlend = b.dataset.n === 'on'; showNb();
+  try { localStorage.setItem('rd.nb', nxBlend ? '1' : '0'); } catch (err) {}
+});
+showNb();
+function showMx() {
+  $('#mxVal').textContent = mxOn ? mxSec + ' s' : 'Off'; $('#mxSec').value = mxSec;
+  document.querySelectorAll('#mxMode button').forEach(x => x.classList.toggle('on', (x.dataset.m === 'on') === mxOn));
+}
+document.querySelectorAll('#mxMode button').forEach(b => b.onclick = () => {
+  mxOn = b.dataset.m === 'on'; showMx();
+  try { localStorage.setItem('rd.mo', mxOn ? '1' : '0'); } catch (err) {}
+});
+$('#mxSec').oninput = e => {
+  mxSec = +e.target.value; showMx();
+  try { localStorage.setItem('rd.ms', mxSec); } catch (err) {}
+};
+showMx();
 
 /* bank dialog */
 let bankEd = null, pendingColor = PALETTE[5], pendingShow = 'name';
