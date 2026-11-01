@@ -239,7 +239,9 @@ body.qv #qpanel{transform:none;opacity:1;pointer-events:auto}
 .rl{list-style:none;margin:0;padding:0}
 .rl li{position:relative;overflow:hidden;border-radius:16px;margin-bottom:7px;transition:transform .15s}
 .rl li.drag{z-index:5;transition:none;box-shadow:0 10px 30px rgba(0,0,0,.6);overflow:visible}
-.rl li .del{position:absolute;inset:0;background:var(--danger);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:flex-end;padding-right:20px;border-radius:16px}
+.rl li .del,.rl li .top{position:absolute;inset:0;background:var(--danger);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:flex-start;padding-left:20px;border-radius:16px;visibility:hidden}
+.rl li .top{background:#3b6fe0;justify-content:flex-end;padding-left:0;padding-right:20px}
+.rl li.swr .del,.rl li.swl .top{visibility:visible}
 .rl li .in{position:relative;display:flex;align-items:center;gap:4px;background:#262839;border:1px solid var(--line);border-radius:16px;padding:5px 8px 5px 0;touch-action:pan-y;transition:transform .15s;min-height:56px;overflow:hidden}
 .rl li.sw .in{transition:none}
 .rl li .kb{align-self:stretch;width:5px;background:rgb(var(--k));flex:none;margin-right:-2px}
@@ -1296,13 +1298,13 @@ function qRows(ul, ids, o) {
     const li = document.createElement('li');
     const pb = bankOf(id) || curBank();
     li.style.setProperty('--k', bankRgb(pb));
-    li.innerHTML = '<div class="del">' + (o.delTxt || 'Remove') + '</div><div class="in"><i class="kb"></i><b class="grip" aria-label="Drag to reorder">' + ic('grip', 18) + '</b><span class="n"></span><span class="t"><b></b><small></small></span>' + (p.energy ? '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>' : '') + '</div>';
+    li.innerHTML = '<div class="del">' + (o.delTxt || 'Remove') + '</div><div class="top">Move to top</div><div class="in"><i class="kb"></i><b class="grip" aria-label="Drag to reorder">' + ic('grip', 18) + '</b><span class="n"></span><span class="t"><b></b><small></small></span>' + (p.energy ? '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>' : '') + '</div>';
     const inn = li.querySelector('.in'), grip = li.querySelector('.grip');
     li.querySelector('.n').textContent = i + 1;
     li.querySelector('.t b').textContent = p.label;
     li.querySelector('.t small').textContent = pb.name;
     (o.extra || []).forEach(x => { const b = document.createElement('button'); b.innerHTML = ic(x.ic, 18); b.setAttribute('aria-label', x.label || ''); b.onclick = e => { e.stopPropagation(); x.fn(i, id, p); }; inn.appendChild(b); });
-    // tap = play, swipe left = delete
+    // tap = play, swipe right = delete/skip, swipe left = move to top
     let sx = 0, sy = 0, dx = 0, st = null, swiped = false;
     inn.onpointerdown = e => { if (e.target.closest('.grip,button')) return; sx = e.clientX; sy = e.clientY; dx = 0; st = 'wait'; swiped = false; };
     inn.onpointermove = e => {
@@ -1312,12 +1314,15 @@ function qRows(ul, ids, o) {
         if (Math.abs(mx) > 10 && Math.abs(mx) > Math.abs(my)) { st = 'swipe'; swiped = true; inn.setPointerCapture(e.pointerId); li.classList.add('sw'); }
         else { if (Math.abs(my) > 10) st = null; return; }
       }
-      dx = Math.min(0, mx); inn.style.transform = 'translateX(' + dx + 'px)';
+      dx = mx; inn.style.transform = 'translateX(' + dx + 'px)';
+      li.classList.toggle('swr', dx > 0); li.classList.toggle('swl', dx < 0);
     };
     inn.onpointerup = inn.onpointercancel = () => {
       const was = st; st = null; if (was !== 'swipe') return;
-      li.classList.remove('sw');
-      if (dx < -Math.min(110, li.offsetWidth * 0.35)) { inn.style.transform = 'translateX(-105%)'; setTimeout(() => o.onDelete(i, id, p), 150); }
+      li.classList.remove('sw', 'swr', 'swl');
+      const th = Math.min(110, li.offsetWidth * 0.35);
+      if (dx > th) { inn.style.transform = 'translateX(105%)'; setTimeout(() => o.onDelete(i, id, p), 150); }
+      else if (dx < -th && i > 0) { inn.style.transform = 'translateX(-105%)'; setTimeout(() => { o.onMove(i, 0); renderQueue(); }, 150); }
       else inn.style.transform = '';
       setTimeout(() => { swiped = false; }, 50);
     };
