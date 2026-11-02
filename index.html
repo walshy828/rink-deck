@@ -300,7 +300,26 @@ body.qv #qpanel{transform:none;opacity:1;pointer-events:auto}
 .ctl .stop{flex:1.5;background:#fff;color:#0b0b10;box-shadow:0 6px 24px rgba(255,255,255,.18)}
 .ctl .stop.idle{opacity:.4}
 .ctl .stop.resume{background:#fff}
-.ctl .next{flex:1;background:var(--glass2);color:#fff;border:1px solid var(--line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)}
+.ctl .next{flex:1;background:var(--glass2);color:#fff;border:1px solid var(--line);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);flex-direction:column;gap:1px;position:relative;touch-action:manipulation;-webkit-touch-callout:none;user-select:none;-webkit-user-select:none;transition:transform .1s,opacity .2s,background .2s,border-color .25s,box-shadow .25s}
+.ctl .next .nt{display:flex;align-items:center;gap:8px;line-height:1.1}
+.ctl .next .ns{display:none;align-items:center;gap:7px;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.2px}
+.ctl .next.hasSub .ns{display:flex}
+.ctl .next.hasSub{gap:3px}
+.ctl .next .ns span{display:flex;align-items:center;gap:3px;white-space:nowrap}
+.ctl .next .na{color:var(--ok)}
+.ctl .next .nf{color:var(--accent);filter:brightness(1.25)}
+.ctl .next .na i{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 6px var(--ok);animation:nxp 1.6s ease-in-out infinite}
+.ctl .next.auto{border-color:rgba(48,209,88,.7);box-shadow:0 0 0 1px rgba(48,209,88,.25),0 0 18px rgba(48,209,88,.22)}
+@keyframes nxp{50%{opacity:.35}}
+#nxMenu{position:absolute;right:0;bottom:calc(100% + 8px);width:min(320px,calc(100vw - 40px));border-radius:22px;padding:6px;z-index:50;background:rgba(36,38,56,.96);animation:pop .16s ease-out;transform-origin:bottom right}
+#nxMenu[hidden]{display:none}
+#nxMenu .nxh{padding:8px 12px 4px;font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim2)}
+#nxMenu .mi .sub{display:block;font-size:12px;font-weight:500;color:var(--dim);margin-top:2px}
+#nxMenu .mi>span:nth-child(2){flex:1;min-width:0}
+#nxMenu .nxs{display:none;align-items:center;gap:10px;padding:0 12px 10px}
+#nxMenu .nxs.on{display:flex}
+#nxMenu .nxs input{flex:1;min-width:0}
+#nxMenu .nxs b{flex:none;min-width:44px;text-align:right;font-size:13px;font-variant-numeric:tabular-nums;color:var(--text)}
 /* energy of the playing song: five bars at the top right of the now-playing row; tap to open the 1-5 picker over the title */
 #npEn{flex:none;align-self:flex-start;margin:-6px -8px 0 0;position:relative}
 #npEn .bars{display:flex;align-items:flex-end;gap:3px;height:44px;min-width:44px;padding:0 8px 12px;border:0;background:transparent;border-radius:14px}
@@ -444,7 +463,14 @@ dialog button.btn:disabled{opacity:.5}
     <div class="prog2"><span id="tCur"></span><div id="bar"><i></i></div><span id="npTimeBox"><div id="npTime"></div><div id="npLimit"></div></span></div>
     <div class="ctl">
       <button class="stop idle" id="stopBtn"></button>
-      <button class="next" id="nextBtn"><span>Next</span><span data-ic="next" data-sz="20"></span></button>
+      <button class="next" id="nextBtn" aria-haspopup="true" aria-expanded="false" aria-label="Next song. Press and hold for auto-next and fade options"><span class="nt"><span>Next</span><span data-ic="next" data-sz="20"></span></span><span class="ns" id="nxSub"></span></button>
+      <div id="nxMenu" class="glass" hidden>
+        <div class="nxh">Next button</div>
+        <button class="mi" id="nxAuto" role="switch" aria-checked="false"><span data-ic="timer" data-sz="20"></span><span>Auto-next<small class="sub" id="nxAutoSub"></small></span><i class="tg"></i></button>
+        <div class="nxs" id="nxAutoRow"><input id="nxMx" type="range" min="10" max="300" step="5" aria-label="Seconds each song plays before auto-next"><b id="nxMxVal"></b></div>
+        <button class="mi" id="nxFade" role="switch" aria-checked="false"><span data-ic="blend" data-sz="20"></span><span>Fade on Next<small class="sub" id="nxFadeSub"></small></span><i class="tg"></i></button>
+        <div class="nxs" id="nxFadeRow"><input id="nxXf" type="range" min="1" max="12" step="1" aria-label="Fade length in seconds"><b id="nxXfVal"></b></div>
+      </div>
     </div>
     <div id="moreMenu" class="glass" hidden>
       <div class="mv"><span data-ic="volLow" data-sz="18"></span><input id="vol" type="range" min="0" max="1" step="0.01" value="1" aria-label="Volume"><span data-ic="vol" data-sz="18"></span></div>
@@ -569,6 +595,8 @@ const ICONS = {
   play: '*<path d="M7 4.5v15a1 1 0 0 0 1.5.86l12-7.5a1 1 0 0 0 0-1.72l-12-7.5A1 1 0 0 0 7 4.5Z"/>',
   pause: '*<rect x="6" y="4" width="4.5" height="16" rx="1.2"/><rect x="13.5" y="4" width="4.5" height="16" rx="1.2"/>',
   stop: '*<rect x="5" y="5" width="14" height="14" rx="3"/>',
+  timer: '<circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 1.5M9.5 2.8h5"/>',
+  blend: '<circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/>',
   next: '*<path d="M4 5.2v13.6a1 1 0 0 0 1.55.83l9-6.8a1 1 0 0 0 0-1.66l-9-6.8A1 1 0 0 0 4 5.2Z"/><rect x="17" y="4.5" width="3" height="15" rx="1.3"/>',
   back: '<path d="M19 20 9 12l10-8Z"/><path d="M5 19V5"/>',
   shuffle: '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>',
@@ -982,6 +1010,7 @@ document.addEventListener('pointerdown', e => {
     return;
   }
   if (!$('#moreMenu').hidden && !e.target.closest('#moreMenu,#npTap')) setMore(false);
+  if (!$('#nxMenu').hidden && !e.target.closest('#nxMenu,#nextBtn')) setNxMenu(false);
 }, true);
 const SH_PAGE = 10;               // songs shown at first, and added each time you scroll to the end of the shuffle list
 let shWant = SH_PAGE;             // how many shuffle picks to keep lined up (not saved; resets when the panel closes)
@@ -1429,9 +1458,9 @@ function tick() {
     $('#bar i').style.width = pct + '%';
     $('#tCur').textContent = fmt(a.currentTime);
     $('#npTime').textContent = a.loop ? 'loop' : '-' + fmt(a.duration - a.currentTime);
-    const lim = limitLeft(a); $('#npLimit').textContent = lim === null ? '' : 'skip ' + fmt(lim);
+    const lim = limitLeft(a); $('#npLimit').textContent = lim === null ? '' : 'skip ' + fmt(lim); nxTick(lim);
     if (curEl) curEl.style.setProperty('--prog', pct + '%');
-  } else { $('#bar i').style.width = '0'; $('#tCur').textContent = ''; $('#npTime').textContent = ''; $('#npLimit').textContent = ''; }
+  } else { $('#bar i').style.width = '0'; $('#tCur').textContent = ''; $('#npTime').textContent = ''; $('#npLimit').textContent = ''; nxTick(null); }
   requestAnimationFrame(safeTick);
 }
 function safeTick() { try { tick(); } catch (e) { console.error('tick', e); requestAnimationFrame(safeTick); } }
@@ -1527,14 +1556,14 @@ document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
   toast(mode === 'queue' ? 'Cue mode: taps add to Up Next' : 'Play mode');
 });
 function setSide(on) { document.body.classList.toggle('side', on); $('#side').inert = !on; if (on) { setMore(false); setQView(false); } }
-function setMore(on) { $('#moreMenu').hidden = !on; $('#npTap').classList.toggle('on', on); $('#npTap').setAttribute('aria-expanded', on); }
+function setMore(on) { if (on) setNxMenu(false); $('#moreMenu').hidden = !on; $('#npTap').classList.toggle('on', on); $('#npTap').setAttribute('aria-expanded', on); }
 function setEditing(on) {
   setQView(false); editing = on; document.body.classList.toggle('edit', on);
   $('#editBtn').classList.toggle('on', on); $('#editTxt').textContent = on ? 'Done editing' : 'Edit songs & banks'; $('#doneBtn').hidden = !on; render();
 }
 $('#menuBtn').onclick = () => setSide(true);
 $('#sideClose').onclick = $('#scrim').onclick = () => setSide(false);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { setSide(false); setMore(false); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { setSide(false); setMore(false); setNxMenu(false); } });
 $('#editBtn').onclick = () => { setSide(false); setEditing(!editing); };
 $('#doneBtn').onclick = () => setEditing(false);
 $('#addBtn').onclick = () => { setSide(false); openEditor(null); };
@@ -1609,7 +1638,6 @@ $('#searchBtn').onclick = () => setSearch(!$('#searchRow').classList.contains('s
 $('#searchX').onclick = () => setSearch(false);
 $('#searchIn').oninput = e => { query = e.target.value; renderGrid(); };
 $('#searchIn').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setSearch(false); };
-$('#nextBtn').onclick = () => next(false, true);
 $('#mQueue').onclick = () => { setMore(false); setQView(!qView); };
 $('#mShuffle').onclick = () => toggleShuffle(curBank());
 $('#qClear').onclick = () => { S.queue = []; save(); renderQueue(); renderGrid(); };
@@ -1689,13 +1717,13 @@ setCueMode(fromTop, false);
 const showXf = () => { $('#xfVal').textContent = xfSec ? xfSec + ' s' : 'Off'; };
 $('#xfSec').value = xfSec; showXf();
 $('#xfSec').oninput = e => {
-  xfSec = +e.target.value; showXf();
+  xfSec = +e.target.value; nxRefresh();
   try { localStorage.setItem('rd.xf', xfSec); } catch (err) {}
 };
 
 function showNb() { document.querySelectorAll('#nbMode button').forEach(x => x.classList.toggle('on', (x.dataset.n === 'on') === nxBlend)); }
 document.querySelectorAll('#nbMode button').forEach(b => b.onclick = () => {
-  nxBlend = b.dataset.n === 'on'; showNb();
+  nxBlend = b.dataset.n === 'on'; nxRefresh();
   try { localStorage.setItem('rd.nb', nxBlend ? '1' : '0'); } catch (err) {}
 });
 showNb();
@@ -1704,14 +1732,61 @@ function showMx() {
   document.querySelectorAll('#mxMode button').forEach(x => x.classList.toggle('on', (x.dataset.m === 'on') === mxOn));
 }
 document.querySelectorAll('#mxMode button').forEach(b => b.onclick = () => {
-  mxOn = b.dataset.m === 'on'; showMx();
+  mxOn = b.dataset.m === 'on'; nxRefresh();
   try { localStorage.setItem('rd.mo', mxOn ? '1' : '0'); } catch (err) {}
 });
 $('#mxSec').oninput = e => {
-  mxSec = +e.target.value; showMx();
+  mxSec = +e.target.value; nxRefresh();
   try { localStorage.setItem('rd.ms', mxSec); } catch (err) {}
 };
 showMx();
+
+/* Next button: shows what is on (auto-next countdown + fade) and a press-and-hold menu to change it */
+const nxFadeOn = () => nxBlend && xfSec > 0;
+let nxSubHtml = null, nxLast = null;
+function nxRefresh() {
+  showXf(); showNb(); showMx();
+  const b = $('#nextBtn'), fade = nxFadeOn();
+  b.classList.toggle('auto', mxOn);
+  nxSubHtml = null; nxLast = undefined; nxTick(nxLastLim);
+  $('#nxAuto').setAttribute('aria-checked', mxOn); $('#nxFade').setAttribute('aria-checked', fade);
+  $('#nxAutoRow').classList.toggle('on', mxOn); $('#nxFadeRow').classList.toggle('on', fade);
+  $('#nxAutoSub').textContent = mxOn ? 'Skips each song after ' + mxSec + ' s' : 'Skip songs after a set time';
+  $('#nxFadeSub').textContent = fade ? 'Blends over ' + xfSec + ' s' : 'Blend songs when you tap Next';
+  $('#nxMx').value = mxSec; $('#nxMxVal').textContent = mxSec + ' s';
+  if (xfSec > 0) $('#nxXf').value = xfSec; $('#nxXfVal').textContent = (xfSec || +$('#nxXf').value) + ' s';
+}
+let nxLastLim = null;
+function nxTick(lim) {
+  nxLastLim = lim;
+  const secs = lim === null ? null : Math.ceil(lim);
+  if (secs === nxLast) return; nxLast = secs;
+  let h = '';
+  if (mxOn) h += '<span class="na"><i></i>' + (secs === null ? mxSec + ' s' : fmt(lim)) + '</span>';
+  if (nxFadeOn()) h += '<span class="nf">' + ic('blend', 13) + '</span>';
+  if (h !== nxSubHtml) { nxSubHtml = h; $('#nxSub').innerHTML = h; $('#nextBtn').classList.toggle('hasSub', !!h); }
+}
+const nxSave = (k, v) => { try { localStorage.setItem(k, v); } catch (err) {} };
+$('#nxAuto').onclick = () => { mxOn = !mxOn; nxSave('rd.mo', mxOn ? '1' : '0'); nxRefresh(); };
+$('#nxFade').onclick = () => {
+  if (nxFadeOn()) nxBlend = false;
+  else { nxBlend = true; if (!xfSec) { xfSec = 4; $('#xfSec').value = 4; nxSave('rd.xf', 4); } }
+  nxSave('rd.nb', nxBlend ? '1' : '0'); nxRefresh();
+};
+$('#nxMx').oninput = e => { mxSec = +e.target.value; $('#mxSec').value = mxSec; nxSave('rd.ms', mxSec); nxRefresh(); };
+$('#nxXf').oninput = e => { xfSec = +e.target.value; $('#xfSec').value = xfSec; nxSave('rd.xf', xfSec); nxRefresh(); };
+function setNxMenu(on) { $('#nxMenu').hidden = !on; $('#nextBtn').setAttribute('aria-expanded', on); if (on) setMore(false); }
+{
+  const nb = $('#nextBtn'); let tm = null, x = 0, y = 0, held = false;
+  const cancel = () => { clearTimeout(tm); tm = null; };
+  const fire = () => { tm = null; held = true; if (navigator.vibrate) navigator.vibrate(15); setNxMenu($('#nxMenu').hidden); };
+  nb.onpointerdown = e => { if (e.pointerType === 'mouse' && e.button !== 0) return; held = false; x = e.clientX; y = e.clientY; cancel(); tm = setTimeout(fire, 450); };
+  nb.onpointermove = e => { if (tm && Math.hypot(e.clientX - x, e.clientY - y) > 10) cancel(); };
+  nb.onpointerup = nb.onpointercancel = nb.onpointerleave = cancel;
+  nb.oncontextmenu = e => { e.preventDefault(); if (!held) { cancel(); fire(); } };
+  nb.onclick = () => { if (held) { held = false; return; } next(false, true); };
+}
+nxRefresh();
 
 /* bank dialog */
 let bankEd = null, pendingColor = PALETTE[5], pendingShow = 'name';
@@ -2319,6 +2394,7 @@ function initBack() {
     if (document.body.classList.contains('side')) setSide(false);
     else if (qView) setQView(false);
     else if (!$('#moreMenu').hidden) setMore(false);
+    else if (!$('#nxMenu').hidden) setNxMenu(false);
     else if (editing) setEditing(false);
     history.pushState({ rd: 1 }, '');   // re-arm the guard so the next back is handled too
   });
