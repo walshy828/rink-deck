@@ -394,6 +394,48 @@ dialog .row button{flex:1;border:0;border-radius:16px;padding:14px;font-size:16p
 dialog .row .primary{background:#fff;color:#000}
 dialog .row .danger{background:rgba(255,69,58,.2);color:#ff6b62}
 dialog h4{margin:22px 0 4px;font-size:16px;font-weight:700}
+/* ---------- ref quick reference ---------- */
+#rf{width:min(96vw,560px);height:min(92vh,900px);padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+#rf[open]{display:flex;flex-direction:column}
+#rf .rh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#rf .rh h3{flex:1;margin:0}
+#rf .seg{margin-bottom:10px;flex:none}
+#rf .seg button{flex:1;padding:8px 0}
+#rf .rb{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;user-select:text;-webkit-user-select:text}
+#rf .rp{display:none}
+#rf .rp.on{display:block}
+#rf h4{margin:18px 0 8px;font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim2)}
+#rf h4:first-child{margin-top:4px}
+#rf .cg{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+#rf .cg label{display:block;margin:0;font-size:12px;font-weight:700;color:var(--dim)}
+#rf .cg input{margin-top:4px;text-align:center;font-size:20px;font-variant-numeric:tabular-nums}
+#rf .cg .seg{margin:4px 0 0}
+#rf .cg .seg button{padding:11px 0;font-size:14px}
+#rf .cg label>.seg{display:flex}
+#rf .co{margin-top:16px;padding:16px;border-radius:18px;background:#fff;color:#000;text-align:center}
+#rf .co .big{font-size:30px;font-weight:800;letter-spacing:-.5px;font-variant-numeric:tabular-nums}
+#rf .co .sub{margin-top:4px;font-size:14px;font-weight:600;color:rgba(0,0,0,.65)}
+#rf .co .wh{margin-top:10px;padding:8px 10px;border-radius:12px;background:#ffe9b8;font-size:14px;font-weight:700}
+#rf .co.empty{background:var(--glass);color:var(--dim);font-size:14px}
+#rf .sg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+#rf .sc{border:1px solid var(--line);background:var(--glass);border-radius:16px;padding:8px 8px 10px;text-align:center}
+#rf .sc svg.fg{width:100%;max-width:120px;height:auto;color:var(--text)}
+#rf .sc b{display:block;font-size:15px;margin-top:2px}
+#rf .sc p{margin:3px 0 0;font-size:12px;line-height:1.35;color:var(--dim)}
+#rf .sc .vf{display:inline-block;margin-left:4px;padding:1px 6px;border-radius:8px;background:rgba(255,159,10,.2);color:var(--warn);font-size:10px;font-weight:800;letter-spacing:.4px;vertical-align:middle}
+#rf .pc{border:1px solid var(--line);background:var(--glass);border-radius:16px;padding:12px 14px;margin-bottom:8px}
+#rf .pc .pt{display:flex;align-items:baseline;gap:10px}
+#rf .pc .pt b{font-size:17px}
+#rf .pc .pt span{margin-left:auto;font-size:20px;font-weight:800;font-variant-numeric:tabular-nums}
+#rf .pc ul{margin:6px 0 0;padding-left:18px;color:var(--dim);font-size:14px}
+#rf details{border:1px solid var(--line);background:var(--glass);border-radius:16px;margin-bottom:8px;padding:0 14px}
+#rf summary{padding:13px 0;font-weight:650;font-size:15px;cursor:pointer}
+#rf details ul{margin:0 0 12px;padding-left:18px;color:var(--dim);font-size:14px}
+#rf li{margin-bottom:4px}
+#rf .note{margin:10px 2px;color:var(--dim2);font-size:12.5px;line-height:1.45}
+#rf a.lk{display:block;border:1px solid var(--line);background:var(--glass);border-radius:16px;padding:13px 14px;margin-bottom:8px;color:var(--text);text-decoration:none}
+#rf a.lk b{display:block;font-size:16px}
+#rf a.lk small{display:block;margin-top:2px;color:var(--dim);font-size:12.5px}
 dialog .inline{display:flex;gap:8px}
 dialog .inline input{flex:1;min-width:0}
 dialog button.btn{border:0;border-radius:14px;padding:11px 16px;font-size:15px;font-weight:650;background:var(--glass2);color:#fff}
@@ -518,6 +560,8 @@ dialog button.btn:disabled{opacity:.5}
   <button id="addBtn" class="srow"><span data-ic="plus" data-sz="20"></span><span>Add song</span></button>
   <button id="setBtn" class="srow"><span data-ic="sliders" data-sz="20"></span><span>Import songs</span></button>
   <button id="syncBtn" class="srow"><span data-ic="sync" data-sz="20"></span><span>Sync now</span><small id="syncTxt"></small></button>
+  <div class="slab">Scorekeeper</div>
+  <button id="rfBtn" class="srow"><span data-ic="book" data-sz="20"></span><span>Ref quick reference</span></button>
 </aside>
 
 <dialog id="ed">
@@ -581,6 +625,82 @@ dialog button.btn:disabled{opacity:.5}
   <div class="row"><button class="btn" id="sdUpd" style="flex:1">Update yt-dlp</button><button class="primary" id="sdClose">Close</button></div>
 </dialog>
 
+<dialog id="rf" aria-label="Referee quick reference">
+  <div class="rh"><h3>Ref quick reference</h3><button id="rfClose" class="ib sm" aria-label="Close" data-ic="x"></button></div>
+  <div class="seg" id="rfTabs" role="tablist"><button data-t="sig" class="on">Signals</button><button data-t="pen">Penalties</button><button data-t="rul">Rules</button><button data-t="cal">Calc</button><button data-t="lnk">Links</button></div>
+  <div class="rb">
+    <div class="rp on" data-p="sig">
+      <div id="rfSig"></div>
+      <div class="note">Drawn as the referee faces you; arrows show the motion. Signals tagged <b>check</b> are from memory of the usual USA Hockey / NHL-style signals and should be confirmed against the current USA Hockey officiating rulebook or your supervisor.</div>
+    </div>
+    <div class="rp" data-p="pen">
+      <h4>Penalty times (EHF, 15-minute periods)</h4>
+      <div class="pc"><div class="pt"><b>Minor</b><span>1:30</span></div><ul><li>Team plays shorthanded</li><li>A goal by the other team ends the first minor being served</li><li>Player sits in the box</li></ul></div>
+      <div class="pc"><div class="pt"><b>Major</b><span>5:00</span></div><ul><li>Team shorthanded; served in full, a goal does not end it</li><li>Every major also carries a game misconduct (player ejected, a teammate serves the 5:00)</li></ul></div>
+      <div class="pc"><div class="pt"><b>Misconduct</b><span>10:00</span></div><ul><li>Team is not shorthanded; a sub goes on right away</li><li>Player sits 10:00, then stays on the bench until the next stoppage</li><li>With a minor: the minor is served first, the 10:00 starts when it ends</li><li>Second misconduct in a game becomes a game misconduct</li></ul></div>
+      <div class="pc"><div class="pt"><b>Game misconduct</b><span>Out</span></div><ul><li>Out for the rest of the game, plus the entire next scheduled game (EHF)</li><li>Shorthanded only if paired with a minor or major</li></ul></div>
+      <div class="pc"><div class="pt"><b>Match</b><span>5:00</span></div><ul><li>Team shorthanded; not ended by a goal</li><li>Ejected; suspended until the Referee-in-Chief reviews</li><li>For attempting to injure, spearing and similar</li></ul></div>
+      <h4>Good to know</h4>
+      <div class="pc"><ul style="margin-top:0"><li>Minors are prorated by period length: over 12 and under 17 minutes = 1:30. A double minor is 3:00.</li><li>Goalie penalties are served by a teammate in the box.</li></ul></div>
+      <h4>When players come back</h4>
+      <div class="pc"><ul style="margin-top:0"><li><b>Matching (coincident) penalties:</b> equal penalties to both teams, such as a minor each. Both players serve their time but neither team is shorthanded. They return at the first whistle after their time is up.</li><li><b>Misconduct:</b> the player returns at the first whistle after the 10:00 is up.</li><li>Use the <b>Calc</b> tab to work out the clock time and whether to wait for the whistle.</li></ul></div>
+      <div class="note">The whistle rule for matching penalties is common practice, not stated on the EHF page. Confirm with the referee.</div>
+      <div class="note">Source: EHF page (last updated 2/3/23) plus secondary USA Hockey summaries. Serving rules are very likely right but not checked against the rulebook.</div>
+    </div>
+    <div class="rp" data-p="rul">
+      <h4>Common Midget infractions</h4>
+      <details open><summary>Minor, or major + game misconduct if injury / excessive</summary><ul><li>Hooking, holding, tripping</li><li>Slashing, high-sticking</li><li>Elbowing, cross-checking</li><li>Interference</li></ul></details>
+      <details open><summary>Minor + misconduct, or major + game misconduct if serious</summary><ul><li>Boarding, charging</li><li>Checking from behind</li><li>Head contact</li></ul></details>
+      <details><summary>Fighting</summary><ul><li>Major plus game misconduct</li></ul></details>
+      <details><summary>Match penalties</summary><ul><li>Attempt to injure, spearing and similar</li><li>Mandatory suspension review</li></ul></details>
+      <h4>EHF game rules</h4>
+      <details><summary>Clock and score</summary><ul><li>Stop time, 15 / 15 / 15 for Midgets (the page's "two halves" text contradicts its own table)</li><li>Lead of 7 goals in the 3rd: clock runs until the lead is 5 or less, unless both coaches agree otherwise</li><li>Recorded to a maximum 10-goal differential; stats stop beyond that</li><li>Not stated whether the penalty clock runs during the 7-goal running clock: ask a ref</li></ul></details>
+      <details><summary>Time-outs and overtime</summary><ul><li>No time-outs in the regular season; one per team in championship games</li><li>Playoff OT: one 5:00 4v4 sudden death, then 5:00 3v3 periods until someone scores; teams don't switch ends</li></ul></details>
+      <details><summary>Bench, officials and eligibility</summary><ul><li>Max 4 coaches, all USA Hockey certified (violation: 3-game suspension for the responsible official)</li><li>Pulling a team off the ice: automatic one-year suspension for the coach</li><li>Playoffs: rostered by Dec 15 and played at least 70% of regular-season games</li><li>The referee's call on facts is final</li></ul></details>
+      <h4>Scorekeeper tips</h4>
+      <details><summary>On every penalty</summary><ul><li>Record player number, infraction, length, and time on the clock</li><li>Know whether the team is shorthanded before you start the penalty clock</li><li>Combined minor + misconduct: time the minor first</li><li>If unsure, ask the referee at the next stoppage</li></ul></details>
+      <div class="note">Not an official rulebook. Where this differs from the current USA Hockey rulebook or your league, the rulebook and the referee win.</div>
+    </div>
+    <div class="rp" data-p="cal">
+      <h4>Game</h4>
+      <div class="cg">
+        <label>Period length (min)<input id="cPer" type="number" inputmode="decimal" min="1" max="60" step="1" value="15"></label>
+        <label>Clock counts<span class="seg" id="cDir"><button data-d="down" class="on">Down</button><button data-d="up">Up</button></span></label>
+      </div>
+      <h4>Penalty starts</h4>
+      <div class="seg" id="cPd"><button data-n="1" class="on">1st</button><button data-n="2">2nd</button><button data-n="3">3rd</button></div>
+      <div class="cg" style="margin-top:8px">
+        <label>Clock minutes<input id="cMin" type="number" inputmode="numeric" min="0" max="60" placeholder="min"></label>
+        <label>Clock seconds<input id="cSec" type="number" inputmode="numeric" min="0" max="59" placeholder="sec"></label>
+      </div>
+      <h4>Time to serve</h4>
+      <div class="seg" id="cLen"><button data-s="90" class="on">1:30</button><button data-s="180">3:00</button><button data-s="300">5:00</button><button data-s="600">10:00</button><button data-s="0">Custom</button></div>
+      <div class="cg" id="cCust" style="margin-top:8px" hidden>
+        <label>Minutes<input id="cLm" type="number" inputmode="numeric" min="0" max="60" value="2"></label>
+        <label>Seconds<input id="cLs" type="number" inputmode="numeric" min="0" max="59" value="0"></label>
+      </div>
+      <div class="cg" style="margin-top:8px">
+        <label>Starts after (min)<input id="cDm" type="number" inputmode="numeric" min="0" max="60" value="0"></label>
+        <label>Starts after (sec)<input id="cDs" type="number" inputmode="numeric" min="0" max="59" value="0"></label>
+      </div>
+      <div class="note" style="margin-top:4px">"Starts after" is for a penalty waiting behind another, such as a misconduct that starts when a minor ends.</div>
+      <h4>Back on the ice</h4>
+      <div class="seg" id="cRet"><button data-r="t" class="on">At that time</button><button data-r="w">First whistle after</button></div>
+      <div id="cOut" class="co"></div>
+    </div>
+    <div class="rp" data-p="lnk">
+      <h4>Eastern Hockey Federation</h4>
+      <a class="lk" href="https://www.fedhockey.com" target="_blank" rel="noopener"><b>fedhockey.com</b><small>EHF home: schedules, standings, rules, news</small></a>
+      <h4>USA Hockey</h4>
+      <a class="lk" href="https://www.usahockeyrulebook.com" target="_blank" rel="noopener"><b>USA Hockey Rulebook</b><small>Official rules and officiating signals (may need a login)</small></a>
+      <a class="lk" href="https://www.usahockey.com" target="_blank" rel="noopener"><b>usahockey.com</b><small>Officials, registration, news</small></a>
+      <h4>Massachusetts</h4>
+      <a class="lk" href="https://www.mahockey.org" target="_blank" rel="noopener"><b>Mass Hockey</b><small>State affiliate: officials, scorekeeper training, annual guide</small></a>
+      <div class="note">Links open in your browser and need a connection. I only linked site home pages, so use each site's menu or search to find the specific page (e.g. game sheets or officials).</div>
+    </div>
+  </div>
+</dialog>
+
 <input id="bulk" type="file" accept="audio/*" multiple hidden>
 <div id="toast"></div>
 
@@ -625,6 +745,7 @@ const ICONS = {
   rows: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   more: '*<circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/>',
+  book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M4 21.5A2.5 2.5 0 0 0 6.5 24H20v-5"/>',
   puck: '<ellipse cx="12" cy="8.5" rx="8.5" ry="3.6"/><path d="M3.5 8.5v5c0 2 3.8 3.6 8.5 3.6s8.5-1.6 8.5-3.6v-5"/>',
 };
 const ic = (n, sz = 20) => { const d = ICONS[n] || '', f = d[0] === '*'; return '<svg class="i" viewBox="0 0 24 24" width="' + sz + '" height="' + sz + '" fill="' + (f ? 'currentColor' : 'none') + '" stroke="' + (f ? 'none' : 'currentColor') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (f ? d.slice(1) : d) + '</svg>'; };
@@ -1949,6 +2070,102 @@ async function ytStatus() {
 }
 $('#setBtn').onclick = () => { setSide(false); fillBanks(); renderImp(); $('#sd').showModal(); ytStatus(); musicStatus(); if ($('#sdQ').value.trim()) musicSearch(); playlistSearch(); };
 $('#sdClose').onclick = () => $('#sd').close();
+
+/* ---------- ref quick reference: signal diagrams ---------- */
+// Each arm is [elbow, hand] from the shoulder; omitted = arm down. x = extras: a arrow, b double arrow, o rotation ring.
+const SIGS = [
+  ['Stick fouls', [
+    ['Hooking', 'Tugging motion with both arms, pulling toward the stomach.', { L: [[34, 50], [46, 54]], R: [[66, 50], [54, 54]], x: [['a', 28, 62, 40, 56], ['a', 72, 62, 60, 56]] }],
+    ['Holding', 'Clasp one wrist with the other hand in front of the chest.', { L: [[34, 50], [50, 44]], R: [[68, 50], [46, 45]] }],
+    ['Slashing', 'Chop the edge of one hand across the straight forearm of the other.', { L: [[24, 34], [8, 36]], R: [[50, 42], [22, 36]], x: [['a', 22, 24, 22, 33]] }],
+    ['High-sticking', 'Hold both fists, one above the other, at the side of the head.', { L: [[52, 42], [70, 22]], R: [[74, 28], [70, 12]] }],
+    ['Cross-checking', 'Forward and back motion of both fists, shoulder-width apart, at chest height.', { L: [[30, 44], [40, 42]], R: [[70, 44], [60, 42]], x: [['b', 40, 52, 40, 34], ['b', 60, 52, 60, 34]] }],
+    ['Spearing', 'Jabbing motion with both hands together in front of the body.', { L: [[34, 52], [48, 56]], R: [[66, 52], [52, 56]], x: [['a', 50, 44, 50, 54]], v: 1 }],
+  ]],
+  ['Body contact', [
+    ['Boarding', 'Strike the closed fist of one hand into the open palm of the other.', { L: [[32, 50], [47, 45]], R: [[68, 50], [53, 45]], x: [['a', 34, 38, 44, 43]] }],
+    ['Charging', 'Rotate clenched fists around each other in front of the chest.', { L: [[32, 50], [46, 46]], R: [[68, 50], [54, 46]], x: [['o', 50, 46, 11]] }],
+    ['Check from behind', 'Push both arms forward from the chest, hands open.', { L: [[28, 42], [40, 40]], R: [[72, 42], [60, 40]], x: [['a', 40, 34, 40, 24], ['a', 60, 34, 60, 24]], v: 1 }],
+    ['Elbowing', 'Tap either elbow with the opposite hand.', { L: [[32, 50], [40, 42]], R: [[56, 48], [34, 50]], x: [['a', 52, 60, 38, 53]] }],
+    ['Kneeing', 'Tap the knee with the palm of the hand.', { R: [[74, 56], [60, 86]], x: [['a', 78, 70, 66, 82]] }],
+    ['Tripping', 'Swing the leg back and forth, keeping the arms down.', { leg: 1, x: [['b', 68, 96, 82, 90]] }],
+    ['Interference', 'Arms crossed in front of the chest, held still.', { L: [[34, 52], [62, 46]], R: [[66, 52], [38, 46]], v: 1 }],
+    ['Roughing / fighting', 'Clenched fist extended out to the side.', { R: [[78, 36], [90, 34]], v: 1 }],
+  ]],
+  ['Misconduct & other', [
+    ['Misconduct', 'Both hands on the hips (usually done twice).', { L: [[22, 48], [34, 58]], R: [[78, 48], [66, 58]] }],
+    ['Game misconduct', 'Misconduct signal, then points the player to the dressing room.', { R: [[78, 40], [94, 52]], v: 1 }],
+    ['Match penalty', 'Pat the top of the head with an open hand.', { R: [[68, 22], [56, 9]], v: 1 }],
+    ['Delay of game', 'Palm of the hand across the chest.', { R: [[66, 46], [40, 40]], v: 1 }],
+    ['Too many men', 'Counts the players on the ice with the fingers.', { L: [[28, 26], [24, 12]], R: [[72, 26], [76, 12]], v: 1 }],
+  ]],
+  ['Game flow', [
+    ['Delayed penalty', 'Arm straight up; the play continues until the offending team touches the puck.', { R: [[66, 18], [66, 2]] }],
+    ['Penalty shot', 'Arms crossed overhead.', { L: [[34, 16], [58, 4]], R: [[66, 16], [42, 4]] }],
+    ['Goal', 'Points to the net, and the goal is announced.', { R: [[80, 34], [96, 42]] }],
+    ['Waved off', 'Both arms swept side to side: no goal or no call.', { L: [[22, 32], [6, 32]], R: [[78, 32], [94, 32]], x: [['b', 10, 24, 20, 24], ['b', 80, 24, 90, 24]] }],
+    ['Offside', 'Linesman: arm straight out to the side.', { L: [[22, 32], [6, 32]], v: 1 }],
+    ['Icing', 'Linesman: arm straight up overhead.', { R: [[66, 18], [66, 2]], v: 1 }],
+  ]],
+];
+function sigFig(s) {
+  const f = n => +n.toFixed(1), arrow = (x1, y1, x2, y2, both) => {
+    const hd = (a, b, c, d) => { const t = Math.atan2(d - b, c - a), L = 4.5; return '<path d="M' + f(c - L * Math.cos(t - .5)) + ' ' + f(d - L * Math.sin(t - .5)) + ' L' + c + ' ' + d + ' L' + f(c - L * Math.cos(t + .5)) + ' ' + f(d - L * Math.sin(t + .5)) + '"/>'; };
+    return '<path d="M' + x1 + ' ' + y1 + ' L' + x2 + ' ' + y2 + '"/>' + hd(x1, y1, x2, y2) + (both ? hd(x2, y2, x1, y1) : '');
+  };
+  const arm = (sh, a, dflt) => { const p = a || dflt; return '<path d="M' + sh + ' L' + p[0] + ' L' + p[1] + '"/><circle cx="' + p[1][0] + '" cy="' + p[1][1] + '" r="3.4" fill="var(--accent)" stroke="none"/>'; };
+  const legR = s.leg ? 'M50 72 L60 86 L82 98' : 'M50 72 L58 108';
+  let g = '<g fill="none" stroke="currentColor" stroke-width="3.6" stroke-linecap="round" stroke-linejoin="round">'
+    + '<circle cx="50" cy="16" r="9"/><path d="M50 25V72M38 32H62M50 72L42 108M' + legR.slice(1) + '"/>'
+    + arm('38 32', s.L, [[34, 52], [34, 70]]) + arm('62 32', s.R, [[66, 52], [66, 70]]) + '</g>'
+    + '<g fill="none" stroke="var(--accent)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+  (s.x || []).forEach(e => {
+    if (e[0] === 'o') g += '<path d="M' + (e[1] + e[3]) + ' ' + e[2] + ' A' + e[3] + ' ' + e[3] + ' 0 1 1 ' + (e[1] + e[3] * .5) + ' ' + f(e[2] - e[3] * .87) + '"/><path d="M' + f(e[1] + e[3] * .5 - 1) + ' ' + f(e[2] - e[3] * .87 - 4) + ' L' + f(e[1] + e[3] * .5) + ' ' + f(e[2] - e[3] * .87) + ' L' + f(e[1] + e[3] * .5 + 4) + ' ' + f(e[2] - e[3] * .87 - 1) + '"/>';
+    else g += arrow(e[1], e[2], e[3], e[4], e[0] === 'b');
+  });
+  return '<svg class="fg" viewBox="0 0 100 116" aria-hidden="true">' + g + '</g></svg>';
+}
+$('#rfSig').innerHTML = SIGS.map(([h, items]) => '<h4>' + h + '</h4><div class="sg">' + items.map(([n, d, s]) =>
+  '<div class="sc">' + sigFig(s) + '<b>' + n + (s.v ? '<span class="vf">check</span>' : '') + '</b><p>' + d + '</p></div>').join('') + '</div>').join('');
+$('#rfBtn').onclick = () => { setSide(false); $('#rf').showModal(); };
+$('#rfClose').onclick = () => $('#rf').close();
+/* penalty time helper: when does the player come back (game clock) */
+const calc = { dir: 'down', per: 1, len: 90, ret: 't' };
+try { const v = localStorage.getItem('rf.perLen'); if (v) $('#cPer').value = v; } catch (e) {}
+function calcRun() {
+  const out = $('#cOut'), n = id => parseFloat($(id).value) || 0, fmt = s => Math.floor(s / 60) + ':' + String(Math.round(s % 60)).padStart(2, '0');
+  const P = Math.round(n('#cPer') * 60);
+  try { localStorage.setItem('rf.perLen', $('#cPer').value); } catch (e) {}
+  if ($('#cMin').value === '' && $('#cSec').value === '') { out.className = 'co empty'; out.textContent = 'Enter the game clock when the penalty starts.'; return; }
+  if (P <= 0) { out.className = 'co empty'; out.textContent = 'Set a period length.'; return; }
+  const clock = Math.min(P, n('#cMin') * 60 + n('#cSec'));
+  let r = calc.dir === 'down' ? clock : P - clock;
+  const dur = calc.len || (n('#cLm') * 60 + n('#cLs')), total = dur + n('#cDm') * 60 + n('#cDs');
+  let p = calc.per, note = '';
+  r -= total;
+  if (r === 0 && p < 3) { r = P; p++; note = 'Time runs out at the end of the period, so the player is back for the start of the next one.'; }
+  while (r < 0 && p < 3) { r += P; p++; }
+  const ord = ['', '1st', '2nd', '3rd'];
+  let html;
+  if (r < 0) html = '<div class="big">Past regulation</div><div class="sub">Runs ' + fmt(-r) + ' past the end of the 3rd. Carry-over into OT or the next game is up to the league.</div>';
+  else html = '<div class="big">' + ord[p] + ' · ' + fmt(r) + ' left</div><div class="sub">' + fmt(P - r) + ' elapsed on the clock' + (p !== calc.per ? ' · penalty carries into the ' + ord[p] : '') + '</div>' + (note ? '<div class="sub">' + note + '</div>' : '');
+  if (calc.ret === 'w') html += '<div class="wh">Then wait for the first whistle: the player goes back in at the first stoppage after that time.</div>';
+  out.className = 'co'; out.innerHTML = html;
+}
+const calcSeg = (id, key, attr, fn) => $(id).onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  $(id).querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
+  calc[key] = fn(b.dataset[attr]); if (id === '#cLen') $('#cCust').hidden = calc.len !== 0; calcRun();
+};
+calcSeg('#cDir', 'dir', 'd', v => v); calcSeg('#cPd', 'per', 'n', Number); calcSeg('#cLen', 'len', 's', Number); calcSeg('#cRet', 'ret', 'r', v => v);
+document.querySelectorAll('#rf .cg input').forEach(i => i.oninput = calcRun);
+calcRun();
+$('#rfTabs').onclick = e => {
+  const b = e.target.closest('button'); if (!b) return;
+  document.querySelectorAll('#rfTabs button').forEach(x => x.classList.toggle('on', x === b));
+  document.querySelectorAll('#rf .rp').forEach(p => p.classList.toggle('on', p.dataset.p === b.dataset.t));
+  $('#rf .rb').scrollTop = 0;
+};
 $('#sdUpd').onclick = async () => {
   const b = $('#sdUpd'); b.disabled = true; b.textContent = 'Updating…';
   try { const j = await (await postJson('yt/update', {}, 130000)).json(); toast(j.message || (j.ok ? 'Updated' : 'Update failed')); }
