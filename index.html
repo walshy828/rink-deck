@@ -436,6 +436,28 @@ dialog h4{margin:22px 0 4px;font-size:16px;font-weight:700}
 #rf a.lk{display:block;border:1px solid var(--line);background:var(--glass);border-radius:16px;padding:13px 14px;margin-bottom:8px;color:var(--text);text-decoration:none}
 #rf a.lk b{display:block;font-size:16px}
 #rf a.lk small{display:block;margin-top:2px;color:var(--dim);font-size:12.5px}
+/* ---------- game notes ---------- */
+#nt{width:min(96vw,560px);height:min(92vh,900px);padding:16px 14px calc(16px + env(safe-area-inset-bottom))}
+#nt[open]{display:flex;flex-direction:column}
+#nt .rh{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+#nt .rh h3{flex:1;margin:0}
+#nt .seg{flex:none;margin-bottom:8px}
+#nt .seg button{flex:1;padding:8px 0}
+#nt .tb{flex:none;display:flex;gap:6px;margin-bottom:8px;overflow-x:auto;scrollbar-width:none}
+#nt .tb::-webkit-scrollbar{display:none}
+#nt .tb button{flex:none;min-width:44px;height:40px;padding:0 12px;border:0;border-radius:12px;background:var(--glass2);color:#fff;font-size:15px;font-weight:700}
+#nt .tb button.tm{background:#fff;color:#000}
+#nt textarea{flex:1;min-height:0;resize:none;line-height:1.45;font-size:17px}
+#nt .pv{flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;user-select:text;-webkit-user-select:text;padding:12px 14px;border-radius:14px;border:1px solid var(--line);background:rgba(0,0,0,.3);font-size:16px;line-height:1.5}
+#nt .pv p{margin:0 0 6px}
+#nt .pv h5{margin:10px 0 4px;font-size:17px}
+#nt .pv ul{margin:0 0 6px;padding-left:20px}
+#nt .pv .empty{color:var(--dim)}
+#nt .nf{flex:none;display:flex;align-items:center;gap:8px;margin-top:10px}
+#nt .nf small{flex:1;color:var(--dim2);font-size:12px}
+#nt .nf button{border:0;border-radius:14px;padding:11px 16px;font-size:15px;font-weight:650;background:var(--glass2);color:#fff}
+#nt .nf .danger{background:rgba(255,69,58,.2);color:#ff6b62}
+#nt .nf .danger.armed{background:#ff453a;color:#fff}
 dialog .inline{display:flex;gap:8px}
 dialog .inline input{flex:1;min-width:0}
 dialog button.btn{border:0;border-radius:14px;padding:11px 16px;font-size:15px;font-weight:650;background:var(--glass2);color:#fff}
@@ -562,6 +584,7 @@ dialog button.btn:disabled{opacity:.5}
   <button id="syncBtn" class="srow"><span data-ic="sync" data-sz="20"></span><span>Sync now</span><small id="syncTxt"></small></button>
   <div class="slab">Scorekeeper</div>
   <button id="rfBtn" class="srow"><span data-ic="book" data-sz="20"></span><span>Ref quick reference</span></button>
+  <button id="ntBtn" class="srow"><span data-ic="pencil" data-sz="20"></span><span>Game notes</span></button>
 </aside>
 
 <dialog id="ed">
@@ -623,6 +646,17 @@ dialog button.btn:disabled{opacity:.5}
   <h4>Converter</h4>
   <div class="hint" id="sdYt">Checking…</div>
   <div class="row"><button class="btn" id="sdUpd" style="flex:1">Update yt-dlp</button><button class="primary" id="sdClose">Close</button></div>
+</dialog>
+
+<dialog id="nt" aria-label="Game notes">
+  <div class="rh"><h3>Game notes</h3><button id="ntClose" class="ib sm" aria-label="Close" data-ic="x"></button></div>
+  <div class="seg" id="ntMode" role="group" aria-label="Notes view"><button data-m="edit" class="on">Write</button><button data-m="view">Preview</button></div>
+  <div class="tb" id="ntTb">
+    <button class="tm" data-a="time">+ Time</button><button data-a="b"><b>B</b></button><button data-a="i"><i>I</i></button><button data-a="h">H</button><button data-a="ul">• List</button><button data-a="cb">☐ Task</button>
+  </div>
+  <textarea id="ntText" placeholder="Penalties, goals, times…&#10;Tap + Time to stamp the clock. **bold**, *italic*, - lists" spellcheck="false" autocomplete="off"></textarea>
+  <div class="pv" id="ntView" hidden></div>
+  <div class="nf"><small id="ntInfo"></small><button id="ntCopy">Copy</button><button id="ntClear" class="danger">Clear</button></div>
 </dialog>
 
 <dialog id="rf" aria-label="Referee quick reference">
@@ -2129,6 +2163,63 @@ $('#rfSig').innerHTML = SIGS.map(([h, items]) => '<h4>' + h + '</h4><div class="
   '<div class="sc">' + sigFig(s) + '<b>' + n + (s.v ? '<span class="vf">check</span>' : '') + '</b><p>' + d + '</p></div>').join('') + '</div>').join('');
 $('#rfBtn').onclick = () => { setSide(false); $('#rf').showModal(); };
 $('#rfClose').onclick = () => $('#rf').close();
+/* ---------- game notes: quick scratchpad, autosaved on this device, cleared between games ---------- */
+{
+  const T = $('#ntText'), V = $('#ntView'), KEY = 'rd.notes';
+  const esc = x => x.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  const inl = x => esc(x).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>').replace(/(^|[^*])\*([^*\s][^*]*?)\*/g, '$1<i>$2</i>');
+  const md = src => {
+    let out = '', inList = false;
+    for (const ln of src.split('\n')) {
+      const li = ln.match(/^\s*[-*•]\s+(.*)/), cb = li && li[1].match(/^\[( |x|X)\]\s*(.*)/), h = ln.match(/^#{1,3}\s+(.*)/);
+      if (li && !inList) { out += '<ul>'; inList = true; } else if (!li && inList) { out += '</ul>'; inList = false; }
+      if (li) out += '<li>' + (cb ? (cb[1] === ' ' ? '☐ ' : '☑ ') + inl(cb[2]) : inl(li[1])) + '</li>';
+      else if (h) out += '<h5>' + inl(h[1]) + '</h5>';
+      else if (ln.trim()) out += '<p>' + inl(ln) + '</p>';
+    }
+    return out + (inList ? '</ul>' : '');
+  };
+  const info = () => { $('#ntInfo').textContent = T.value.trim() ? T.value.length + ' characters · saved on this device' : 'Saved on this device'; };
+  const store = () => { try { localStorage.setItem(KEY, T.value); } catch (e) {} info(); };
+  try { T.value = localStorage.getItem(KEY) || ''; } catch (e) {}
+  T.oninput = store;
+  const setMode = m => {
+    document.querySelectorAll('#ntMode button').forEach(x => x.classList.toggle('on', x.dataset.m === m));
+    const v = m === 'view';
+    T.hidden = v; V.hidden = !v; $('#ntTb').style.display = v ? 'none' : '';
+    if (v) V.innerHTML = md(T.value) || '<p class="empty">Nothing yet.</p>';
+  };
+  $('#ntMode').onclick = e => { const b = e.target.closest('button'); if (b) setMode(b.dataset.m); };
+  const put = (pre, post, ph) => {
+    const a = T.selectionStart, b = T.selectionEnd, sel = T.value.slice(a, b) || ph || '';
+    T.setRangeText(pre + sel + post, a, b, 'select'); T.setSelectionRange(a + pre.length, a + pre.length + sel.length); T.focus(); store();
+  };
+  const lineStart = pre => {   // prefix the current line, on a fresh line if the cursor is mid-line
+    const a = T.selectionStart, v = T.value, at = v.lastIndexOf('\n', a - 1) + 1;
+    if (a === at) { T.setRangeText(pre, a, a, 'end'); } else { T.setRangeText('\n' + pre, T.selectionEnd, T.selectionEnd, 'end'); }
+    T.focus(); store();
+  };
+  $('#ntTb').addEventListener('pointerdown', e => e.preventDefault());   // keep the keyboard up while tapping tools
+  $('#ntTb').onclick = e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const a = b.dataset.a;
+    if (a === 'time') { const d = new Date(); put(d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ', '', ''); T.setSelectionRange(T.selectionEnd, T.selectionEnd); }
+    else if (a === 'b') put('**', '**', 'bold');
+    else if (a === 'i') put('*', '*', 'italic');
+    else if (a === 'h') lineStart('# ');
+    else if (a === 'ul') lineStart('- ');
+    else if (a === 'cb') lineStart('- [ ] ');
+  };
+  $('#ntCopy').onclick = async () => {
+    try { await navigator.clipboard.writeText(T.value); toast('Notes copied'); }
+    catch (e) { T.hidden = false; V.hidden = true; T.select(); toast('Press copy on the selected text'); }
+  };
+  armConfirm($('#ntClear'), 'Tap again to clear', () => { T.value = ''; store(); setMode('edit'); T.focus(); toast('Notes cleared'); }, 'Clear');
+  $('#ntBtn').onclick = () => { setSide(false); setMode('edit'); info(); $('#nt').showModal(); };
+  $('#ntClose').onclick = () => $('#nt').close();
+  $('#nt').addEventListener('close', () => $('#ntClear').resetConfirm && $('#ntClear').resetConfirm());
+}
+
 /* penalty time helper: when does the player come back (game clock) */
 const calc = { dir: 'down', per: 1, len: 90, ret: 't' };
 try { const v = localStorage.getItem('rf.perLen'); if (v) $('#cPer').value = v; } catch (e) {}
