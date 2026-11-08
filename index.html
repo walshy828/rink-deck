@@ -90,8 +90,6 @@ svg.i{display:block;flex:none}
 .seg button.on{background:#fff;color:#000;box-shadow:0 2px 8px rgba(0,0,0,.35)}
 .seg button.on.q{background:var(--cue);color:#fff}
 
-/* energy chip: just a bolt (plus the value when one is set); tap to fan out the choices, pick one and it folds back */
-.echip{display:flex;align-items:center;gap:5px;min-width:0;position:relative}
 .epop{position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:min(280px,calc(100vw - 28px));padding:12px;border-radius:20px;background:rgba(22,24,38,.96);border:1px solid var(--line);box-shadow:0 12px 36px rgba(0,0,0,.5);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
 .epop .eh{font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim2);margin:0 2px 8px}
 .er5{display:flex;gap:6px}
@@ -105,8 +103,6 @@ svg.i{display:block;flex:none}
 .ehide.on i{background:var(--ok)}
 .ehide.on i::after{transform:translateX(16px)}
 .ehint{margin:8px 2px 0;font-size:12px;color:var(--dim2)}
-.ib.ech{width:auto;min-width:40px;padding:0 12px;gap:5px;border-radius:20px;font-size:14px;font-weight:700}
-.ib.ech.set{background:#fff;color:#000;border-color:#fff}
 .eo{flex:none;min-width:38px;height:40px;padding:0 10px;border-radius:20px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:14px;font-weight:700}
 .eo.on{background:#fff;color:#000;border-color:#fff}
 
@@ -566,14 +562,25 @@ body[data-q=closed] #qpanel{display:none}
 #nxMenu .gem{font-size:20px;line-height:1;width:20px;text-align:center}
 
 /* ---------- Up Next: shuffle mix chips ---------- */
-.mix{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
-.mix .chip{height:32px;padding:0 12px;border-radius:16px;border:1px solid rgba(var(--tk),.55);background:rgba(var(--tk),.14);color:var(--dim);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+/* one swipeable row of bank chips (tap = mix in/out, hold = that bank's energy); a small summary line under it says what's mixing */
+.mix{display:flex;flex-wrap:nowrap;gap:6px;margin:4px -14px 0;padding:2px 14px 4px;overflow-x:auto;overscroll-behavior-x:contain;scroll-snap-type:x proximity;scroll-padding:0 14px;scrollbar-width:none;-webkit-mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 22px),transparent);mask-image:linear-gradient(90deg,transparent,#000 14px,#000 calc(100% - 22px),transparent)}
+.mix::-webkit-scrollbar{display:none}
+.mix .chip{flex:none;scroll-snap-align:start;height:32px;padding:0 12px;border-radius:16px;border:1px solid rgba(var(--tk),.55);background:rgba(var(--tk),.14);color:var(--dim);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:5px;white-space:nowrap;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.mix .chip.ico{padding:0 9px}
 .mix .chip.on{background:rgba(var(--tk),.85);border-color:rgb(var(--tk));color:#fff}
+.mix .chip.ed{box-shadow:0 0 0 2px #fff}
 .mix .chip .bi{font-size:15px}
-#qpanel .echip{flex-wrap:wrap}
-#qpanel .echip:has(.epop){flex-basis:100%}
-#qpanel .ib.ech{height:32px;min-width:32px}
-#qpanel .epop{position:static;width:100%;margin-top:6px}
+.mix .chip .ce{display:inline-flex;align-items:center;gap:1px;margin-right:-4px;padding:1px 5px 1px 3px;border-radius:8px;background:rgba(0,0,0,.28);font-size:10px;font-weight:800}
+.mixsum{display:flex;flex-wrap:wrap;align-items:center;gap:0 10px;margin:2px 2px 10px;min-height:18px;font-size:11px;color:var(--dim2)}
+.mixsum button{display:inline-flex;align-items:center;gap:3px;padding:2px 0;border:0;background:none;color:var(--dim);font-size:11px;font-weight:700}
+.mixsum button .ev{display:inline-flex;align-items:center;color:var(--dim2);font-weight:800}
+.mixsum button.ed{color:#fff}
+.mixsum button.none,.mixsum button.none .ev{color:var(--warn)}
+.mix .chip.on.none{border-style:dashed;background:rgba(var(--tk),.4)}
+#mixE .epop{position:static;width:100%;margin:0 0 10px}
+.epop .eh{display:flex;align-items:center;gap:6px}
+.epop .eh b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:none;letter-spacing:0;font-size:13px;color:var(--text)}
+.epop .eh .edone{flex:none;height:28px;padding:0 12px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--dim);font-size:12px;font-weight:800;letter-spacing:0;text-transform:none}
 .qtop{touch-action:none;cursor:grab}
 .qh .qn{font-size:15px;font-weight:650;color:var(--dim)}
 
@@ -616,7 +623,9 @@ body[data-q=closed] #qpanel{display:none}
       </div>
       <ul id="qlist" class="rl"></ul>
       <div class="qh sec"><h4 id="shTitle">Mixing in</h4></div>
-      <div class="mix" id="mix"><div id="eChip" class="echip" hidden></div></div>
+      <div class="mix" id="mix"></div>
+      <div class="mixsum" id="mixSum"></div>
+      <div id="mixE"></div>
       <ul id="shlist" class="rl" style="margin-top:10px"></ul>
       <div id="shMore" style="height:1px"></div>
     </section>
@@ -1237,17 +1246,15 @@ const shOn = () => shGroup().length > 0;
 const gPool = () => shGroup().flatMap(shPool);
 // Energy: pad.energy = 1-5 (unset = unrated). bank.eSel = shuffle only picks songs rated at one of these (empty = any; unrated songs are left out while a filter is on).
 function setEnergy(p, n) { p.energy = (p.energy === n) ? 0 : n; save(); shFill(); renderGrid(); renderQueue(); toast(p.energy ? 'Energy ' + p.energy + ': ' + p.label : 'Energy cleared: ' + p.label); }
-const eOpen = { hdr: false, np: false };
-function efilter(host, b) {
-  host.innerHTML = '';
-  const sel = eSel(b), open = eOpen.hdr, btn = document.createElement('button');
-  btn.className = 'ib ech' + (sel.length ? ' set' : ''); btn.setAttribute('aria-label', 'Shuffle energy filter: ' + eLabel(sel)); btn.setAttribute('aria-expanded', open);
-  btn.innerHTML = ic('bolt', 18) + (sel.length ? '<span>' + eLabel(sel) + '</span>' : '');
-  btn.onclick = () => { eOpen.hdr = !eOpen.hdr; renderEchips(); };
-  host.appendChild(btn);
-  if (!open) return;
-  const pop = document.createElement('div'); pop.className = 'epop';
-  pop.innerHTML = '<div class="eh">Shuffle energy</div>';
+const eOpen = { np: false };
+let mixE = null; // id of the bank whose energy panel is open under the Up Next mix row
+// Energy panel for one bank: which levels its shuffle may pick, and whether the grid hides the rest.
+function ePanel(host, b) {
+  const sel = eSel(b), pop = document.createElement('div'); pop.className = 'epop';
+  const hd = document.createElement('div'); hd.className = 'eh';
+  hd.innerHTML = ic('bolt', 13) + '<b></b>'; hd.querySelector('b').textContent = (b.icon ? b.icon + ' ' : '') + b.name + ' energy';
+  const done = document.createElement('button'); done.className = 'edone'; done.textContent = 'Done';
+  done.onclick = () => { mixE = null; renderShuffle(); }; hd.appendChild(done);
   const row = document.createElement('div'); row.className = 'er5';
   const apply = ns => { b.eSel = ns; S.shUp = []; shFill(); save(); render(); };
   const all = document.createElement('button'); all.className = 'eall' + (sel.length ? '' : ' on'); all.textContent = 'Any energy';
@@ -1257,16 +1264,13 @@ function efilter(host, b) {
     x.onclick = () => { const ns = sel.includes(n) ? sel.filter(m => m !== n) : [...sel, n].sort(); apply(ns.length === 5 ? [] : ns); };
     row.appendChild(x);
   });
-  const hint = document.createElement('div'); hint.className = 'ehint'; hint.textContent = sel.length ? 'Shuffle only plays songs rated ' + eLabel(sel) + (b.eHide ? '; others are hidden.' : '; others are dimmed.') : 'Tap levels to pick, e.g. 3, 4, 5.';
+  const hint = document.createElement('div'); hint.className = 'ehint'; hint.textContent = sel.length ? (b.shuffle ? 'Mixes in only songs rated ' : 'When mixed in, plays only songs rated ') + eLabel(sel) + (b.eHide ? '; others are hidden in the bank.' : '; others are dimmed in the bank.') : 'Tap levels to pick, e.g. 3, 4, 5. Unrated songs are left out while a filter is on.';
   const hide = document.createElement('button'); hide.className = 'ehide' + (b.eHide ? ' on' : ''); hide.disabled = !sel.length; hide.setAttribute('role', 'switch'); hide.setAttribute('aria-checked', !!b.eHide);
-  hide.innerHTML = '<span>Hide other songs</span><i></i>';
+  hide.innerHTML = '<span>Hide other songs in bank</span><i></i>';
   hide.onclick = () => { b.eHide = !b.eHide; save(); render(); };
-  pop.append(row, all, hide, hint); host.appendChild(pop);
+  pop.append(hd, row, all, hide, hint); host.appendChild(pop);
 }
 function renderEchips() {
-  const b = curBank(), h = $('#eChip');
-  h.hidden = !b.shuffle; if (!b.shuffle) eOpen.hdr = false;
-    if (b.shuffle) efilter(h, b);
   const rp = current && current._pad && findPad(current._pad.id), d = $('#mEn'), ne = $('#npEn');
   ne.hidden = !rp; ne.innerHTML = '';
   if (!rp) eOpen.np = false;
@@ -1287,8 +1291,8 @@ function renderEchips() {
   }
 }
 document.addEventListener('pointerdown', e => {
-  if ((eOpen.hdr && !e.target.closest('#eChip')) || (eOpen.np && !e.target.closest('#npEn'))) {
-    if (!e.target.closest('#eChip')) eOpen.hdr = false; eOpen.np = false; renderEchips();
+  if (eOpen.np && !e.target.closest('#npEn')) {
+    eOpen.np = false; renderEchips();
     // tapping off only closes the picker: swallow this press and its click so nothing underneath fires
     e.stopPropagation(); e.preventDefault();
     const eat = ev => { ev.stopPropagation(); ev.preventDefault(); };
@@ -1642,7 +1646,8 @@ function qRows(ul, ids, o) {
     const inn = li.querySelector('.in'), grip = li.querySelector('.grip');
     li.querySelector('.n').textContent = i + 1;
     li.querySelector('.t b').textContent = p.label;
-    li.querySelector('.t small').textContent = pb.name;
+    const psh = bankShow(pb); li.querySelector('.t small').textContent = psh === 'icon' ? pb.icon : psh === 'both' ? pb.icon + ' ' + pb.name : pb.name;
+    if (psh === 'icon') li.querySelector('.t small').title = pb.name;
     (o.extra || []).forEach(x => { const b = document.createElement('button'); b.innerHTML = ic(x.ic, 18); b.setAttribute('aria-label', x.label || ''); b.onclick = e => { e.stopPropagation(); x.fn(i, id, p); }; inn.appendChild(b); });
     // tap = play, swipe right = delete/skip, swipe left = move to top
     let sx = 0, sy = 0, dx = 0, st = null, swiped = false;
@@ -1727,17 +1732,36 @@ function renderQueue() {
 function renderShuffle() {
   const g = shGroup(), b = curBank(), lead = g[0] || b;
   $('#shTitle').innerHTML = '<i class="dot" style="--k:' + bankRgb(lead) + '"></i>'; $('#shTitle').append(g.length ? 'Mixing in' : 'Shuffle');
-  // one chip per bank: tap to mix it into the shuffle (or take it out); the ⚡ chip sets the energy filter for the bank you're viewing
-  const mix = $('#mix'), ec = $('#eChip');
-  mix.querySelectorAll('.chip').forEach(x => x.remove());
-  S.banks.filter(x => x.pads.some(p => p.fileId)).forEach(x => {
-    const c = document.createElement('button'); c.className = 'chip' + (x.shuffle ? ' on' : ''); c.style.setProperty('--tk', bankRgb(x));
-    c.setAttribute('aria-pressed', !!x.shuffle); c.setAttribute('aria-label', (x.shuffle ? 'Stop mixing in ' : 'Mix in ') + x.name);
-    if (x.shuffle) c.insertAdjacentHTML('beforeend', ic('shuffle', 13));
-    if (x.icon) { const ie = document.createElement('span'); ie.className = 'bi'; ie.textContent = x.icon; c.append(ie); }
-    c.append(x.name); c.onclick = () => toggleShuffle(x);
-    mix.insertBefore(c, ec);
+  // one chip per bank in a swipeable row, drawn the way the bank's own button is (name / icon / both).
+  // Tap = mix it in or out (filled = mixing). Hold (or right-click) = set the energy levels that bank mixes in.
+  const mix = $('#mix'), sx = mix.scrollLeft, banks = S.banks.filter(x => x.pads.some(p => p.fileId));
+  if (mixE && !banks.some(x => x.id === mixE)) mixE = null;
+  mix.innerHTML = '';
+  banks.forEach(x => {
+    const sh = bankShow(x), sel = eSel(x), c = document.createElement('button');
+    c.className = 'chip' + (x.shuffle ? ' on' : '') + (x.shuffle && !shPool(x).length ? ' none' : '') + (sh === 'icon' ? ' ico' : '') + (mixE === x.id ? ' ed' : ''); c.style.setProperty('--tk', bankRgb(x));
+    c.setAttribute('aria-pressed', !!x.shuffle); c.setAttribute('aria-label', (x.shuffle ? 'Stop mixing in ' : 'Mix in ') + x.name + (sel.length ? ', energy ' + eLabel(sel) : '') + '. Hold to set energy');
+    c.title = x.name + (sel.length ? ' · energy ' + eLabel(sel) : '') + ' · hold or right-click for energy';
+    if (sh !== 'name') { const ie = document.createElement('span'); ie.className = 'bi'; ie.textContent = x.icon; c.append(ie); }
+    if (sh !== 'icon') c.append(x.name);
+    if (sel.length) c.insertAdjacentHTML('beforeend', '<span class="ce">' + ic('bolt', 10) + eLabel(sel) + '</span>');
+    bindMixChip(c, x); mix.appendChild(c);
   });
+  mix.scrollLeft = sx;
+  // what's mixing, in small text: each entry opens that bank's energy panel
+  const sum = $('#mixSum'); sum.innerHTML = '';
+  const onB = banks.filter(x => x.shuffle);
+  if (!onB.length) sum.textContent = banks.length ? 'Tap a bank to mix it in · hold it to pick its energy' : '';
+  onB.forEach(x => {
+    const sel = eSel(x), n = shPool(x).length, t = document.createElement('button'); t.className = (mixE === x.id ? 'ed' : '') + (n ? '' : ' none');
+    t.setAttribute('aria-label', x.name + ' energy: ' + (sel.length ? eLabel(sel) : 'any') + (n ? '' : ', no songs match') + ', change');
+    t.textContent = (x.icon ? x.icon + ' ' : '') + x.name;
+    t.insertAdjacentHTML('beforeend', '<span class="ev">' + ic('bolt', 10) + (sel.length ? eLabel(sel) : 'Any') + (n ? '' : ' · no songs') + '</span>');
+    t.onclick = () => { mixE = mixE === x.id ? null : x.id; renderShuffle(); };
+    sum.appendChild(t);
+  });
+  const me = $('#mixE'), eb = mixE && S.banks.find(x => x.id === mixE); me.innerHTML = '';
+  if (eb) ePanel(me, eb);
   const ul = $('#shlist'); ul.innerHTML = '';
   if (!g.length) { const li = document.createElement('li'); li.innerHTML = '<span class="hint">' + (b.shuffle ? 'No songs available to shuffle in this bank.' : 'Tap a bank above to shuffle it. Its songs play after Up Next runs out.') + '</span>'; ul.appendChild(li); return; }
   qRows(ul, S.shUp, {
@@ -1752,6 +1776,18 @@ const shMoreObs = new IntersectionObserver(es => {
   if (!es.some(e => e.isIntersecting) || !shOn() || qDrag) return;
   shWant += SH_PAGE; shFill(); saveLocal(); renderQueue();
 });
+let mixHeld = 0;
+function bindMixChip(c, b) {
+  let tm = null, x = 0, y = 0;
+  const cancel = () => { clearTimeout(tm); tm = null; };
+  // opening is idempotent: Android also sends contextmenu after a long press, which must not close it again
+  const fire = () => { mixHeld = Date.now(); if (navigator.vibrate) navigator.vibrate(15); if (mixE !== b.id) { mixE = b.id; renderShuffle(); } };
+  c.onpointerdown = e => { if (e.pointerType === 'mouse' && e.button !== 0) return; x = e.clientX; y = e.clientY; cancel(); tm = setTimeout(fire, 450); };
+  c.onpointermove = e => { if (tm && Math.hypot(e.clientX - x, e.clientY - y) > 8) cancel(); };
+  c.onpointerup = c.onpointercancel = c.onpointerleave = cancel;
+  c.oncontextmenu = e => { e.preventDefault(); if (Date.now() - mixHeld > 700) { cancel(); fire(); } };
+  c.onclick = () => { if (Date.now() - mixHeld < 700) return; toggleShuffle(b); };
+}
 function toggleShuffle(b) {
   b.shuffle = !b.shuffle; S.shUp = []; shFill();
   save(); renderTabs(); renderEchips(); renderQueue();
