@@ -537,6 +537,19 @@ body.pick .pad:not(.plus):not(.empty){outline:2px dashed #ffd60a;outline-offset:
 #bar b.on{display:block}
 #dkMore{display:none;flex-direction:column;gap:6px;margin:4px 0 6px}
 body.dkx #dkMore{display:flex}
+/* smallest player: just Stop / Next (and a hairline of progress along the top edge) */
+body.dkmin #dock{padding-top:10px}
+body.dkmin #dock .np,body.dkmin #dock .prog2,body.dkmin #dkMore{display:none}
+body.dkmin .ctl{margin-top:0}
+.dline{display:none;position:absolute;left:24px;right:24px;top:3px;height:2px;border-radius:1px;background:rgba(255,255,255,.12);overflow:hidden;pointer-events:none}
+.dline i{display:block;height:100%;width:0;background:rgba(255,255,255,.75)}
+body.dkmin .dline{display:block}
+/* header Up Next button: shows how many songs are cued; lit while the queue is open */
+#qBtn{position:relative}
+#qBtn .qb{position:absolute;top:-4px;right:-4px;min-width:19px;height:19px;padding:0 5px;border-radius:10px;background:var(--cue);color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;border:1.5px solid #14151f}
+#qBtn.on{background:#fff;color:#000;border-color:#fff}
+body[data-q=closed] #qpanel{display:none}
+#qHide{flex:none}
 .dkl{display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim2)}
 .dkl span:last-child{font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none;font-weight:650;color:var(--dim)}
 .dkr,.dke{display:flex;gap:6px}
@@ -570,7 +583,8 @@ body.dkx #dkMore{display:flex}
   #grid{flex:1;min-height:60px}
   #qpanel{position:relative;left:auto;right:auto;bottom:auto;flex:none;margin:6px 10px 6px;padding:4px 14px 12px;border-radius:24px;transform:none;opacity:1;pointer-events:auto;max-height:none;height:178px;transition:height .25s cubic-bezier(.2,.9,.25,1);background:#181a28}
   body[data-q=half] #qpanel{height:52%}
-  body[data-q=full] #qpanel{height:calc(100% - 66px)}
+  body[data-q=full] #qpanel{height:calc(100% - 12px)}
+  body[data-q=full] #tabs,body[data-q=full] #grid{display:none}
   #qpanel .grab{margin:4px auto 0}
   #qpanel .qh:first-of-type{margin-top:4px}
 }
@@ -589,6 +603,7 @@ body.dkx #dkMore{display:flex}
     <button id="menuBtn" class="ib" aria-label="Settings" data-ic="menu"></button>
     <label id="searchBox"><span data-ic="search" data-sz="17"></span><input id="searchIn" type="search" placeholder="Search all songs" aria-label="Search all songs" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button id="searchX" type="button" aria-label="Clear search" data-ic="x" data-sz="15" hidden></button></label>
     <button id="doneBtn" class="pill" hidden>Done</button>
+    <button id="qBtn" class="ib" aria-label="Up Next" aria-expanded="false" data-ic="list"><b class="qb" id="qBadge" hidden></b></button>
     <button id="ntOpen" class="ib" aria-label="Game notes" aria-expanded="false" data-ic="note"></button>
   </header>
   <nav id="tabs"></nav>
@@ -597,7 +612,7 @@ body.dkx #dkMore{display:flex}
     <section id="qpanel" class="glass" aria-label="Up Next">
       <div class="qtop" id="qTop">
         <div class="grab"></div>
-        <div class="qh"><h4>Up Next <span class="qn" id="qN"></span></h4><button id="qClear" class="txtbtn">Clear</button></div>
+        <div class="qh"><h4>Up Next <span class="qn" id="qN"></span></h4><button id="qClear" class="txtbtn">Clear</button><button id="qHide" class="ib sm" aria-label="Hide Up Next" data-ic="chevdown"></button></div>
       </div>
       <ul id="qlist" class="rl"></ul>
       <div class="qh sec"><h4 id="shTitle">Mixing in</h4></div>
@@ -607,7 +622,7 @@ body.dkx #dkMore{display:flex}
     </section>
   </div>
   <footer id="dock" class="glass">
-    <button class="dgrab" id="dkGrab" aria-label="Expand player" aria-expanded="false"></button>
+    <button class="dgrab" id="dkGrab" aria-label="Player size"></button><div class="dline"><i id="dlineI"></i></div>
     <div class="np" id="npTap" role="button" tabindex="0" aria-label="Song options" aria-haspopup="true" aria-expanded="false">
       <div class="art"><span class="ic" data-ic="music" data-sz="26"></span><span class="eq"><i></i><i></i><i></i></span></div>
       <div class="nm"><div id="npKind">Ready</div><div id="npName">Nothing playing</div><div id="npNext"></div></div>
@@ -1599,15 +1614,21 @@ function renderGrid() {
 // you switch banks. Tablets and desktop: a side panel. qView = pulled up past peek. The height is saved on this device.
 let qView = false, qDrag = false;
 const wide = matchMedia('(min-width:900px)');
-const qOpen = () => true;
-const QH = ['peek', 'half', 'full'];
-let qH = 'peek'; try { const v = localStorage.getItem('rd.qh'); if (QH.includes(v)) qH = v; } catch (e) {}
+// closed = hidden (reopen with the Up Next button in the header); full covers the banks and songs, leaving the header row.
+const QH = ['closed', 'peek', 'half', 'full'];
+let qH = 'peek', qLast = 'peek'; try { const v = localStorage.getItem('rd.qh'); if (QH.includes(v)) qH = v; const l = localStorage.getItem('rd.ql'); if (QH.includes(l) && l !== 'closed') qLast = l; } catch (e) {}
+const qOpen = () => qH !== 'closed';
 function setQH(h) {
-  qH = h; qView = h !== 'peek'; if (!qView) shWant = SH_PAGE;
+  const was = qH; qH = h; qView = h === 'half' || h === 'full'; if (!qView) shWant = SH_PAGE;
+  if (h !== 'closed') qLast = h;
   document.body.dataset.q = h; $('#mQueue').classList.toggle('on', qView);
-  try { localStorage.setItem('rd.qh', h); } catch (e) {}
+  $('#qBtn').classList.toggle('on', h !== 'closed'); $('#qBtn').setAttribute('aria-expanded', h !== 'closed');
+  try { localStorage.setItem('rd.qh', h); localStorage.setItem('rd.ql', qLast); } catch (e) {}
+  if (was === 'closed' && h !== 'closed') renderQueue();
 }
 function setQView(on) { if (on) setMore(false); if (on !== qView) setQH(on ? 'half' : 'peek'); }
+$('#qBtn').onclick = () => setQH(qH === 'closed' ? qLast : 'closed');
+$('#qHide').onclick = () => setQH('closed');
 setQH(qH);
 wide.addEventListener && wide.addEventListener('change', () => renderQueue());
 // Rows with a drag handle (reorder), swipe-left (delete) and tap (play now). o: {onPlay, onDelete, onMove, extra:[{txt, fn}]}
@@ -1686,6 +1707,7 @@ function cueToggle(p) {
 function playNow(p) { stopAll(300); play(p, true); }
 function renderQueue() {
   showGoal(); put($('#qN'), S.queue.length ? '· ' + S.queue.length : '');
+  put($('#qBadge'), String(S.queue.length)); $('#qBadge').hidden = !S.queue.length;
   for (const qc of [$('#qCount')]) { qc.textContent = S.queue.length; qc.hidden = !S.queue.length; }
   $('#mShuffle').setAttribute('aria-checked', !!curBank().shuffle);
   shFill();
@@ -1774,7 +1796,7 @@ function tick() {
   const a = current, bi = $('#bar i');
   if (a && a.duration) {
     const pct = (Math.round(a.currentTime / a.duration * 1000) / 10) + '%';
-    putW(bi, 'width', pct);
+    putW(bi, 'width', pct); if (dk === 'min') putW($('#dlineI'), 'width', pct);
     put($('#tCur'), fmt(a.currentTime));
     put($('#npTime'), a.loop ? 'loop' : '-' + fmt(a.duration - a.currentTime));
     const lim = limitLeft(a); put($('#npLimit'), lim === null ? '' : 'skip ' + fmt(lim)); nxTick(lim);
@@ -1935,14 +1957,14 @@ $('#stopBtn').onclick = () => { if (current && current.paused && !active.has(cur
   $('#dock').addEventListener('touchstart', start, { passive: true });
   $('#dock').addEventListener('touchend', e => {
     const d = dy(e); if (!t0 || t0.el.closest('#bar,#moreMenu,#npEn,#nxMenu,#dkMore input')) return;
-    if (d < -40) setDkx(true); else if (d > 40) setDkx(false);
+    if (d < -40) stepDk(1); else if (d > 40) stepDk(-1);
   }, { passive: true });
-  const step = n => setQH(QH[Math.max(0, Math.min(2, QH.indexOf(qH) + n))]);
+  const step = n => setQH(QH[Math.max(0, Math.min(3, QH.indexOf(qH) + n))]);
   const top = $('#qTop'); let p0 = null;
   top.onpointerdown = e => { if (wide.matches || e.target.closest('button')) return; p0 = e.clientY; top.setPointerCapture(e.pointerId); };
   top.onpointerup = e => {
     if (p0 === null) return; const d = e.clientY - p0; p0 = null;
-    if (d < -25) step(d < -200 ? 2 : 1); else if (d > 25) step(d > 200 ? -2 : -1);
+    if (d < -25) step(d < -200 ? 2 : 1); else if (d > 25) setQH(qH === 'peek' || d > 200 && qH === 'half' ? 'closed' : QH[QH.indexOf(qH) - (d > 200 ? 2 : 1)]);
     else setQH(qH === 'peek' ? 'half' : 'peek');   // tap: toggle between peek and half
   };
   top.onpointercancel = () => { p0 = null; };
@@ -1986,6 +2008,7 @@ function setSearch(on) {
 }
 $('#searchX').onclick = e => { e.preventDefault(); setSearch(false); };
 $('#searchIn').oninput = e => { query = e.target.value; $('#searchX').hidden = !query; renderGrid(); };
+$('#searchIn').onfocus = () => { if (qH === 'full' && !wide.matches) setQH('peek'); };   // a full-height queue covers the results: drop it so they show
 $('#searchIn').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setSearch(false); };
 $('#mQueue').onclick = () => { setMore(false); setQView(!qView); };
 $('#mShuffle').onclick = () => toggleShuffle(curBank());
@@ -2165,12 +2188,18 @@ $('#nxGoalPick').onclick = startPick;
 $('#goalBtn').onclick = startPick;
 
 /* ---------- expanded player: start point tools + one-tap energy ---------- */
-function setDkx(on) {
-  document.body.classList.toggle('dkx', on); $('#dkGrab').setAttribute('aria-expanded', on); $('#dkGrab').setAttribute('aria-label', on ? 'Compact player' : 'Expand player');
-  try { localStorage.setItem('rd.dkx', on ? '1' : '0'); } catch (e) {}
+// Player sizes: min = Stop / Next only, mid = song + progress (standard), max = plus start point and energy tools.
+// Swipe up / down on the player steps through them; tapping the handle goes min → mid → max → mid. Saved on this device.
+const DK = ['min', 'mid', 'max'];
+let dk = 'mid';
+function setDk(l) {
+  dk = l; document.body.classList.toggle('dkmin', l === 'min'); document.body.classList.toggle('dkx', l === 'max');
+  $('#dkGrab').setAttribute('aria-label', 'Player size: ' + (l === 'min' ? 'buttons only' : l === 'max' ? 'expanded' : 'standard') + '. Tap to change');
+  try { localStorage.setItem('rd.dk', l); } catch (e) {}
 }
-try { setDkx(localStorage.getItem('rd.dkx') === '1'); } catch (e) { setDkx(false); }
-$('#dkGrab').onclick = () => setDkx(!document.body.classList.contains('dkx'));
+const stepDk = n => setDk(DK[Math.max(0, Math.min(2, DK.indexOf(dk) + n))]);
+try { const v = localStorage.getItem('rd.dk'); setDk(DK.includes(v) ? v : localStorage.getItem('rd.dkx') === '1' ? 'max' : 'mid'); } catch (e) { setDk('mid'); }
+$('#dkGrab').onclick = () => setDk(dk === 'mid' ? 'max' : 'mid');
 const livePad = () => current && current._pad && current._pad.id !== '__test' ? findPad(current._pad.id) : null;
 [1, 2, 3, 4, 5].forEach(n => { const b = document.createElement('button'); b.textContent = n; b.setAttribute('aria-label', 'Energy ' + n); b.onclick = () => { const p = livePad(); if (p) setEnergy(p, n); }; $('#dkE').appendChild(b); });
 function renderDkMore() {
@@ -2995,7 +3024,7 @@ function initBack() {
     document.querySelectorAll('dialog[open]').forEach(d => d.close());
     if (document.body.classList.contains('side')) setSide(false);
     else if (pickGoal) closePick();
-    else if (document.body.classList.contains('dkx')) setDkx(false);
+    else if (dk === 'max') setDk('mid');
     else if (qView) setQView(false);
     else if (!$('#moreMenu').hidden) setMore(false);
     else if (!$('#nxMenu').hidden) setNxMenu(false);
