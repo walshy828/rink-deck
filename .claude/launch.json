@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "rink-deck",
+      "runtimeExecutable": "/bin/sh",
+      "runtimeArgs": ["-c", "PORT=8099 DATA_DIR=/private/tmp/claude-502/-Users-dpw--claude-spares-spare-papOM5/d1114d60-70a2-4be5-8a06-0c1386085446/scratchpad/rdata MUSIC_DIR=/private/tmp/claude-502/-Users-dpw--claude-spares-spare-papOM5/d1114d60-70a2-4be5-8a06-0c1386085446/scratchpad/rmusic node server.js"],
+      "port": 8099
+    }
+  ]
+}

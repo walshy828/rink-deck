@@ -490,6 +490,94 @@ dialog button.btn:disabled{opacity:.5}
 #toast{position:fixed;left:50%;bottom:calc(var(--dockH) + 28px + env(safe-area-inset-bottom));transform:translate(-50%,8px);background:rgba(40,42,60,.85);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);border:1px solid var(--line);color:#fff;padding:11px 18px;border-radius:22px;font-size:14px;font-weight:600;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:99;max-width:90vw;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;box-shadow:0 10px 30px rgba(0,0,0,.4)}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 @media(max-width:480px){.brand b{display:none}}
+
+/* ---------- battery: no live blur ----------
+   backdrop-filter re-blurs whatever is behind a panel every time anything under or inside it changes (progress bar,
+   grid scrolling under the queue). Panels are solid tints instead, and the ambient background is plain gradients. */
+*,*::backdrop{-webkit-backdrop-filter:none!important;backdrop-filter:none!important}
+.glass{background:#1b1d2b}
+dialog{background:#1e2031}
+#padMenu,#nxMenu,#moreMenu,.epop,#npEn .pick{background:#26283b}
+#toast{background:#2b2d42}
+dialog::backdrop{background:rgba(0,0,0,.6)}
+.blob{filter:none;opacity:.5}
+.b1,.b3{background:radial-gradient(closest-side,rgb(var(--k)),rgba(var(--k),0))}
+.b2{background:radial-gradient(closest-side,#3a2a8c,rgba(58,42,140,0))}
+.ctl .next .na i{animation:none}
+
+/* ---------- header: menu · always-on search · notes ---------- */
+#searchBox{flex:1;min-width:0;display:flex;align-items:center;gap:6px;height:40px;padding:0 6px 0 12px;border-radius:20px;border:1px solid var(--line);background:var(--glass);color:var(--dim)}
+#searchBox:focus-within{border-color:rgba(var(--k),.8)}
+#searchBox input{flex:1;min-width:0;height:100%;border:0;background:transparent;color:var(--text);font-size:16px;outline:none;user-select:text;-webkit-user-select:text}
+#searchBox input::-webkit-search-cancel-button{display:none}
+#searchX{width:28px;height:28px;border:0;border-radius:50%;background:var(--glass2);color:var(--text);display:flex;align-items:center;justify-content:center;padding:0}
+#ntOpen{position:relative}
+#ntOpen.has::after{content:'';position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:#ffd60a;border:1.5px solid #14151f}
+#ntOpen.on{background:#fff;color:#000;border-color:#fff}
+
+/* ---------- + Up Next on every song ---------- */
+.pad .qa{position:absolute;top:7px;right:7px;z-index:2;min-width:32px;height:32px;padding:0 7px;border-radius:16px;background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.3);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;font-variant-numeric:tabular-nums}
+.pad .qa:active{transform:scale(.9)}
+.pad .qa.in{background:var(--cue);border-color:var(--cue)}
+.pad:has(.qa) .r1{padding-right:34px}
+body.list .pad .qa{position:static;order:98;flex:none}
+body.list .pad:has(.qa) .r1{padding-right:0}
+body.pick .pad:not(.plus):not(.empty){outline:2px dashed #ffd60a;outline-offset:-3px}
+
+/* ---------- toast with Undo ---------- */
+#toast.act{pointer-events:auto;display:flex;align-items:center;gap:12px;padding:6px 6px 6px 16px}
+#toast button{flex:none;border:0;border-radius:16px;padding:8px 14px;background:#fff;color:#000;font-weight:700;font-size:14px}
+#toast span{overflow:hidden;text-overflow:ellipsis}
+
+/* ---------- now-playing: compact / expanded ---------- */
+.dgrab{display:block;width:60px;height:16px;margin:-10px auto 2px;padding:0;border:0;background:transparent;position:relative}
+.dgrab::after{content:'';position:absolute;left:14px;right:14px;top:5px;height:5px;border-radius:3px;background:rgba(255,255,255,.3)}
+#bar b{position:absolute;top:6px;width:3px;height:14px;margin-left:-1px;border-radius:2px;background:#ffd60a;pointer-events:none;display:none}
+#bar b.on{display:block}
+#dkMore{display:none;flex-direction:column;gap:6px;margin:4px 0 6px}
+body.dkx #dkMore{display:flex}
+.dkl{display:flex;justify-content:space-between;font-size:11px;font-weight:800;letter-spacing:.9px;text-transform:uppercase;color:var(--dim2)}
+.dkl span:last-child{font-variant-numeric:tabular-nums;letter-spacing:0;text-transform:none;font-weight:650;color:var(--dim)}
+.dkr,.dke{display:flex;gap:6px}
+.dkr button,.dke button{flex:1;height:40px;border-radius:14px;border:1px solid var(--line);background:var(--glass);color:var(--text);font-size:14px;font-weight:700;padding:0}
+.dkr button:active,.dke button:active{transform:scale(.95)}
+.dkr .pr{flex:2;background:#ffd60a;color:#000;border-color:#ffd60a}
+.dke button{color:var(--dim)}
+.dke button.on{background:#fff;color:#000;border-color:#fff}
+.dkr button:disabled,.dke button:disabled{opacity:.35}
+#nxMenu .goalmi{background:rgb(255,69,58);color:#fff;border-radius:16px;font-weight:750;margin-bottom:2px}
+#nxMenu .goalmi .sub{color:rgba(255,255,255,.85)}
+#nxMenu .goalmi svg{color:#fff}
+#nxMenu .goalmi+.mi{border-top:0}
+#nxMenu .gem{font-size:20px;line-height:1;width:20px;text-align:center}
+
+/* ---------- Up Next: shuffle mix chips ---------- */
+.mix{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+.mix .chip{height:32px;padding:0 12px;border-radius:16px;border:1px solid rgba(var(--tk),.55);background:rgba(var(--tk),.14);color:var(--dim);font-size:13px;font-weight:700;display:inline-flex;align-items:center;gap:5px}
+.mix .chip.on{background:rgba(var(--tk),.85);border-color:rgb(var(--tk));color:#fff}
+.mix .chip .bi{font-size:15px}
+#qpanel .echip{flex-wrap:wrap}
+#qpanel .echip:has(.epop){flex-basis:100%}
+#qpanel .ib.ech{height:32px;min-width:32px}
+#qpanel .epop{position:static;width:100%;margin-top:6px}
+.qtop{touch-action:none;cursor:grab}
+.qh .qn{font-size:15px;font-weight:650;color:var(--dim)}
+
+/* ---------- phones: queue is a sheet that stays on screen at one of three heights ---------- */
+@media(max-width:899px){
+  #stage{flex-direction:column}
+  #grid{flex:1;min-height:60px}
+  #qpanel{position:relative;left:auto;right:auto;bottom:auto;flex:none;margin:6px 10px 6px;padding:4px 14px 12px;border-radius:24px;transform:none;opacity:1;pointer-events:auto;max-height:none;height:178px;transition:height .25s cubic-bezier(.2,.9,.25,1);background:#181a28}
+  body[data-q=half] #qpanel{height:52%}
+  body[data-q=full] #qpanel{height:calc(100% - 66px)}
+  #qpanel .grab{margin:4px auto 0}
+  #qpanel .qh:first-of-type{margin-top:4px}
+}
+/* ---------- game notes: a sheet above the player, so Stop / Next stay reachable while typing ---------- */
+#nt{position:fixed;inset:auto 8px calc(var(--dockH) + 16px + env(safe-area-inset-bottom)) 8px;top:calc(env(safe-area-inset-top) + 56px);margin:0;width:auto;max-width:none;height:auto;max-height:none;z-index:45;border-radius:24px;box-shadow:0 -10px 40px rgba(0,0,0,.6)}
+@media(min-width:900px){#nt{left:auto;width:460px;right:14px}}
+#nt .rh .txtbtn{padding:9px 14px}
+#side .sh b{font-size:21px}
 @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
 </style>
 </head>
@@ -497,43 +585,51 @@ dialog button.btn:disabled{opacity:.5}
 <div class="bg"><i class="blob b1"></i><i class="blob b2"></i><i class="blob b3"></i></div>
 <div id="app">
   <header class="top">
-    <button id="menuBtn" class="ib" aria-label="Menu" data-ic="menu"></button>
-    <div class="brand"><span class="logo" data-ic="puck" data-sz="20"></span><b>Rink Deck</b></div>
-    <div class="tools">
-      <button id="doneBtn" class="pill" hidden>Done</button>
-      <button id="searchBtn" class="ib" aria-label="Search" data-ic="search"></button>
-      <div id="eChip" class="echip" hidden></div>
-    </div>
+    <button id="menuBtn" class="ib" aria-label="Settings" data-ic="menu"></button>
+    <label id="searchBox"><span data-ic="search" data-sz="17"></span><input id="searchIn" type="search" placeholder="Search all songs" aria-label="Search all songs" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="search"><button id="searchX" type="button" aria-label="Clear search" data-ic="x" data-sz="15" hidden></button></label>
+    <button id="doneBtn" class="pill" hidden>Done</button>
+    <button id="ntOpen" class="ib" aria-label="Game notes" aria-expanded="false" data-ic="note"></button>
   </header>
-  <div id="searchRow"><input id="searchIn" type="search" placeholder="Search songs…" autocomplete="off" autocapitalize="off" spellcheck="false"><button id="searchX" class="ib" aria-label="Close search" data-ic="x"></button></div>
   <nav id="tabs"></nav>
   <div id="stage">
     <main id="grid"></main>
     <section id="qpanel" class="glass" aria-label="Up Next">
-      <div class="grab"></div>
-      <div class="qh"><h4>Up Next</h4><button id="qClear" class="txtbtn">Clear</button><button id="shToggle" class="switch" role="switch" aria-checked="false" aria-label="Shuffle this bank"></button><button id="qClose" class="ib sm" aria-label="Close" data-ic="chevdown"></button></div>
+      <div class="qtop" id="qTop">
+        <div class="grab"></div>
+        <div class="qh"><h4>Up Next <span class="qn" id="qN"></span></h4><button id="qClear" class="txtbtn">Clear</button></div>
+      </div>
       <ul id="qlist" class="rl"></ul>
-      <div class="qh sec"><h4 id="shTitle">Shuffle</h4></div>
+      <div class="qh sec"><h4 id="shTitle">Mixing in</h4></div>
+      <div class="mix" id="mix"><div id="eChip" class="echip" hidden></div></div>
       <ul id="shlist" class="rl" style="margin-top:10px"></ul>
       <div id="shMore" style="height:1px"></div>
     </section>
   </div>
   <footer id="dock" class="glass">
+    <button class="dgrab" id="dkGrab" aria-label="Expand player" aria-expanded="false"></button>
     <div class="np" id="npTap" role="button" tabindex="0" aria-label="Song options" aria-haspopup="true" aria-expanded="false">
       <div class="art"><span class="ic" data-ic="music" data-sz="26"></span><span class="eq"><i></i><i></i><i></i></span></div>
       <div class="nm"><div id="npKind">Ready</div><div id="npName">Nothing playing</div><div id="npNext"></div></div>
       <div id="npEn" hidden></div>
     </div>
-    <div class="prog2"><span id="tCur"></span><div id="bar"><i></i></div><span id="npTimeBox"><div id="npTime"></div><div id="npLimit"></div></span></div>
+    <div class="prog2"><span id="tCur"></span><div id="bar"><i></i><b id="barCue"></b></div><span id="npTimeBox"><div id="npTime"></div><div id="npLimit"></div></span></div>
+    <div id="dkMore">
+      <div class="dkl"><span>Start point</span><span id="cueTxt"></span></div>
+      <div class="dkr"><button id="cueL" aria-label="Start point 1 second earlier">−1 s</button><button id="cueSet" class="pr">Set start here</button><button id="cueR" aria-label="Start point 1 second later">+1 s</button><button id="cueGo" aria-label="Play from the start point">⏮ Start</button></div>
+      <div class="dkl"><span>Energy · tap to rate</span></div>
+      <div class="dke" id="dkE"></div>
+    </div>
     <div class="ctl">
       <button class="stop idle" id="stopBtn"></button>
       <button class="next" id="nextBtn" aria-haspopup="true" aria-expanded="false" aria-label="Next song. Press and hold for auto-next and fade options"><span class="nt"><span>Next</span><span data-ic="next" data-sz="20"></span></span><span class="ns" id="nxSub"></span></button>
       <div id="nxMenu" class="glass" hidden>
-        <div class="nxh">Next button</div>
+        <div class="nxh">Hold Next</div>
+        <button class="mi goalmi" id="nxGoal"><span class="gem">🚨</span><span>Goal song<small class="sub" id="nxGoalSub"></small></span><span data-ic="play" data-sz="18"></span></button>
         <button class="mi" id="nxAuto" role="switch" aria-checked="false"><span data-ic="timer" data-sz="20"></span><span>Auto-next<small class="sub" id="nxAutoSub"></small></span><i class="tg"></i></button>
         <div class="nxs" id="nxAutoRow"><input id="nxMx" type="range" min="10" max="300" step="5" aria-label="Seconds each song plays before auto-next"><b id="nxMxVal"></b></div>
         <button class="mi" id="nxFade" role="switch" aria-checked="false"><span data-ic="blend" data-sz="20"></span><span>Fade on Next<small class="sub" id="nxFadeSub"></small></span><i class="tg"></i></button>
         <div class="nxs" id="nxFadeRow"><input id="nxXf" type="range" min="1" max="12" step="1" aria-label="Fade length in seconds"><b id="nxXfVal"></b></div>
+        <button class="mi" id="nxGoalPick"><span data-ic="pencil" data-sz="20"></span><span>Change goal song…</span></button>
       </div>
     </div>
     <div id="moreMenu" class="glass" hidden>
@@ -549,16 +645,29 @@ dialog button.btn:disabled{opacity:.5}
 
 <div id="scrim"></div>
 <aside id="side" aria-label="Menu">
-  <div class="sh"><span class="logo" data-ic="puck" data-sz="20"></span><b>Rink Deck</b><button id="sideClose" class="ib sm" aria-label="Close menu" data-ic="x"></button></div>
-  <div id="bkInfo"></div>
-  <div class="slab">Songs shown as</div>
-  <div class="vseg" id="view" role="group" aria-label="Song layout"><button data-v="grid" class="on" aria-label="Card view" data-ic="grid" data-sz="17"></button><button data-v="list" aria-label="List view" data-ic="rows" data-sz="17"></button></div>
-  <div class="slab">Tapping a song</div>
-  <div class="seg" id="mode" role="group" aria-label="What tapping a song does"><button data-m="play" class="on">Play</button><button data-m="queue" class="q">Add to Up Next</button></div>
+  <div class="sh"><span class="logo" data-ic="puck" data-sz="20"></span><b>Settings</b><button id="sideClose" class="ib sm" aria-label="Close settings" data-ic="x"></button></div>
+  <div class="slab">Game tools</div>
+  <button id="ntBtn" class="srow"><span data-ic="note" data-sz="20"></span><span>Game notes</span></button>
+  <button id="rfBtn" class="srow"><span data-ic="book" data-sz="20"></span><span>Ref quick reference</span></button>
+
+  <div class="slab">Playback</div>
+  <button id="goalBtn" class="srow"><span class="gem" style="font-size:19px">🚨</span><span>Goal song</span><small id="goalTxt"></small></button>
+  <div class="hint">Hold Next and tap Goal song to play it from its start point. Tap here, then tap a song to choose it.</div>
   <div class="slab">Song start</div>
   <div class="seg" id="cueMode" role="group" aria-label="Where songs start playing"><button data-c="cue" class="on">Cue points</button><button data-c="top">From the top</button></div>
   <div class="hint" id="cueHint"></div>
-  <div class="slab">Output level: <span id="outVal">0 dB</span></div>
+  <div class="slab">Crossfade: <span id="xfVal">4 s</span></div>
+  <input id="xfSec" type="range" min="0" max="12" step="1" value="4" aria-label="Crossfade length between songs" style="width:100%">
+  <div class="hint">Blend the end of a song into the next one in Up Next or shuffle. 0 = off. Saved on this device.</div>
+  <div class="slab">Blend on Next button</div>
+  <div class="seg" id="nbMode" role="group" aria-label="Crossfade when pressing Next"><button data-n="off" class="on">Off</button><button data-n="on">On</button></div>
+  <div class="hint">Pressing Next (or Goal song) blends out the current song and blends in the next, using the crossfade length above. Saved on this device.</div>
+  <div class="slab">Song time limit: <span id="mxVal">60 s</span></div>
+  <div class="seg" id="mxMode" role="group" aria-label="Limit how long each song plays"><button data-m="off" class="on">Off</button><button data-m="on">On</button></div>
+  <input id="mxSec" type="range" min="10" max="300" step="5" value="60" aria-label="Maximum seconds each song plays" style="width:100%">
+  <div class="hint">Moves on to the next song in Up Next or shuffle after this many seconds of play, blending if crossfade is on. Saved on this device.</div>
+
+  <div class="slab" style="margin-top:28px">Sound · Output level: <span id="outVal">0 dB</span></div>
   <input id="outDb" type="range" min="-12" max="12" step="1" value="0" aria-label="Overall output boost or cut" style="width:100%">
   <div class="hint">Boost or cut every song, on top of each song's own setting. Saved on this device.</div>
   <div class="slab">Auto-level quiet songs</div>
@@ -567,24 +676,19 @@ dialog button.btn:disabled{opacity:.5}
   <input id="tgtDb" type="range" min="-24" max="-8" step="0.5" value="-14" aria-label="Target loudness" style="width:100%">
   <div class="hint" id="autoHint"></div>
   <button id="anaBtn" class="srow"><span data-ic="sync" data-sz="20"></span><span>Measure song loudness</span><small id="anaTxt"></small></button>
-  <div class="slab">Crossfade: <span id="xfVal">4 s</span></div>
-  <input id="xfSec" type="range" min="0" max="12" step="1" value="4" aria-label="Crossfade length between songs" style="width:100%">
-  <div class="hint">Blend the end of a song into the next one in Up Next or shuffle. 0 = off. Saved on this device.</div>
-  <div class="slab">Blend on Next button</div>
-  <div class="seg" id="nbMode" role="group" aria-label="Crossfade when pressing Next"><button data-n="off" class="on">Off</button><button data-n="on">On</button></div>
-  <div class="hint">Pressing Next blends out the current song and blends in the next, using the crossfade length above (needs crossfade above 0). Saved on this device.</div>
-  <div class="slab">Song time limit: <span id="mxVal">60 s</span></div>
-  <div class="seg" id="mxMode" role="group" aria-label="Limit how long each song plays"><button data-m="off" class="on">Off</button><button data-m="on">On</button></div>
-  <input id="mxSec" type="range" min="10" max="300" step="5" value="60" aria-label="Maximum seconds each song plays" style="width:100%">
-  <div class="hint">Moves on to the next song in Up Next or shuffle after this many seconds of play, blending if crossfade is on. Saved on this device.</div>
+
+  <div class="slab" style="margin-top:28px">Library &amp; display</div>
+  <div id="bkInfo"></div>
+  <div class="slab">Songs shown as</div>
+  <div class="vseg" id="view" role="group" aria-label="Song layout"><button data-v="grid" class="on" aria-label="Card view" data-ic="grid" data-sz="17"></button><button data-v="list" aria-label="List view" data-ic="rows" data-sz="17"></button></div>
+  <div class="slab">Keep screen on</div>
+  <div class="seg" id="scrMode" role="group" aria-label="When to keep the screen on"><button data-s="play" class="on">While playing</button><button data-s="always">Always</button></div>
+  <div class="hint">While playing: the screen may sleep after 20 minutes with nothing playing, which saves battery. Saved on this device.</div>
   <div class="slab">Library</div>
   <button id="editBtn" class="srow"><span data-ic="pencil" data-sz="20"></span><span id="editTxt">Edit songs &amp; banks</span></button>
   <button id="addBtn" class="srow"><span data-ic="plus" data-sz="20"></span><span>Add song</span></button>
   <button id="setBtn" class="srow"><span data-ic="sliders" data-sz="20"></span><span>Import songs</span></button>
   <button id="syncBtn" class="srow"><span data-ic="sync" data-sz="20"></span><span>Sync now</span><small id="syncTxt"></small></button>
-  <div class="slab">Scorekeeper</div>
-  <button id="rfBtn" class="srow"><span data-ic="book" data-sz="20"></span><span>Ref quick reference</span></button>
-  <button id="ntBtn" class="srow"><span data-ic="pencil" data-sz="20"></span><span>Game notes</span></button>
 </aside>
 
 <dialog id="ed">
@@ -649,10 +753,10 @@ dialog button.btn:disabled{opacity:.5}
 </dialog>
 
 <dialog id="nt" aria-label="Game notes">
-  <div class="rh"><h3>Game notes</h3><button id="ntClose" class="ib sm" aria-label="Close" data-ic="x"></button></div>
+  <div class="rh"><h3>Game notes</h3><button id="ntRef" class="txtbtn">Ref</button><button id="ntClose" class="ib sm" aria-label="Close" data-ic="x"></button></div>
   <div class="seg" id="ntMode" role="group" aria-label="Notes view"><button data-m="edit" class="on">Write</button><button data-m="view">Preview</button></div>
   <div class="tb" id="ntTb">
-    <button class="tm" data-a="time">+ Time</button><button data-a="b"><b>B</b></button><button data-a="i"><i>I</i></button><button data-a="h">H</button><button data-a="ul">• List</button><button data-a="cb">☐ Task</button>
+    <button class="tm" data-a="time">+ Time</button><button data-a="song">+ Song</button><button data-a="b"><b>B</b></button><button data-a="i"><i>I</i></button><button data-a="h">H</button><button data-a="ul">• List</button><button data-a="cb">☐ Task</button>
   </div>
   <textarea id="ntText" placeholder="Penalties, goals, times…&#10;Tap + Time to stamp the clock. **bold**, *italic*, - lists" spellcheck="false" autocomplete="off"></textarea>
   <div class="pv" id="ntView" hidden></div>
@@ -780,6 +884,7 @@ const ICONS = {
   menu: '<path d="M4 6h16M4 12h16M4 18h16"/>',
   more: '*<circle cx="5" cy="12" r="1.9"/><circle cx="12" cy="12" r="1.9"/><circle cx="19" cy="12" r="1.9"/>',
   book: '<path d="M4 4.5A2.5 2.5 0 0 1 6.5 2H20v17H6.5A2.5 2.5 0 0 0 4 21.5Z"/><path d="M4 21.5A2.5 2.5 0 0 0 6.5 24H20v-5"/>',
+  note: '<path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9Z"/><path d="M14 3v6h6M8 13h8M8 17h5"/>',
   puck: '<ellipse cx="12" cy="8.5" rx="8.5" ry="3.6"/><path d="M3.5 8.5v5c0 2 3.8 3.6 8.5 3.6s8.5-1.6 8.5-3.6v-5"/>',
 };
 const ic = (n, sz = 20) => { const d = ICONS[n] || '', f = d[0] === '*'; return '<svg class="i" viewBox="0 0 24 24" width="' + sz + '" height="' + sz + '" fill="' + (f ? 'currentColor' : 'none') + '" stroke="' + (f ? 'none' : 'currentColor') + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + (f ? d.slice(1) : d) + '</svg>'; };
@@ -828,18 +933,23 @@ let S = {
 };
 let mode = 'play', editing = false, query = '';
 let view = 'grid'; try { view = localStorage.getItem('rd.view') === 'list' ? 'list' : 'grid'; } catch (e) {}
+let goalId = null; try { goalId = localStorage.getItem('rd.goal') || null; } catch (e) {}   // the song Hold Next → Goal song plays (device-only)
 let sync = { rev: null, dirty: false, base: null };   // rev = last server revision we match; dirty = local edits not yet pushed; base = copy of the library as of that revision (for merging)
 let edits = 0;
 const fresh = new Set();                  // file ids created this session (never treated as orphans)
 const saveLocal = () => idbPut('meta', 'state', S).catch(() => {});   // device-only change (tab, volume)
 const save = () => { edits++; sync.dirty = true; idbPut('meta', 'sync', sync).catch(() => {}); saveLocal(); scheduleSync(); };
-async function newFile(blob) { const id = uid(); fresh.add(id); await idbPut('files', id, blob); return id; }
+async function newFile(blob) { const id = uid(); fresh.add(id); filesOk = false; await idbPut('files', id, blob); return id; }
 const findPad = id => { for (const b of S.banks) for (const p of b.pads) if (p.id === id) return p; return null; };
 const curBank = () => S.banks[S.bank] || S.banks[0];
 
-function toast(msg) {
-  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show'), 1600);
+// undo: optional function; shows an Undo button and keeps the toast up longer.
+function toast(msg, undo) {
+  const t = $('#toast'); t.textContent = ''; t.classList.toggle('act', !!undo);
+  const s = document.createElement('span'); s.textContent = msg; t.appendChild(s);
+  if (undo) { const b = document.createElement('button'); b.textContent = 'Undo'; b.onclick = () => { t.classList.remove('show', 'act'); undo(); }; t.appendChild(b); }
+  t.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove('show', 'act'), undo ? 4000 : 1600);
 }
 
 /* ---------- audio engine ---------- */
@@ -890,11 +1000,13 @@ function trimAudio() {
 }
 // Preload only what can be needed next. Tap-pad banks (horns, effects) preload fully for instant response; shuffle banks
 // preload nothing themselves (their upcoming picks are loaded by lookahead()), and the cued queue loads 10 ahead.
-const LOOKAHEAD = 10;
+// Audio is already on the device, so it loads in a moment: keep only the next couple of songs (and the goal song) ready.
+const LOOKAHEAD = 2;
 function warm(bank) { if (!bank.shuffle) bank.pads.forEach(p => audioFor(p)); lookahead(); }
 function lookaheadIds() {
   const ids = S.queue.slice(0, LOOKAHEAD);
-  if (shOn()) ids.push(...(S.shUp || []).slice(0, 3));
+  if (shOn()) ids.push(...(S.shUp || []).slice(0, 1));
+  if (goalId) ids.push(goalId);
   return ids;
 }
 function lookahead() { lookaheadIds().forEach(id => { const pad = findPad(id); if (pad) audioFor(pad); }); }
@@ -1017,11 +1129,10 @@ function mxCheck() {
   if (left > fade) return;
   a._xf = true;
   const pad = takeNext(true); if (!pad) return;
-  save(); renderQueue(); renderGrid();
+  saveNext(); qChanged();
   if (fade && pad.id !== a._pad.id) play(pad, true, false, { from: a, ms: Math.max(300, left * 1000) });
   else { stopAll(400); play(pad, true); }
 }
-setInterval(() => { try { mxCheck(); } catch (e) { console.error('mx', e); } }, 250);
 function xfCheck() {
   const a = current;
   if (!xfSec || !a || a._xf || a.paused || a.loop || document.hidden || !a._pad || a._pad.layer || a._pad.id === '__test') return;
@@ -1031,10 +1142,9 @@ function xfCheck() {
   a._xf = true;
   const pad = takeNext(true); if (!pad) return;
   if (pad.id === a._pad.id) { S.queue.unshift(pad.id); return; }   // same song again: let it finish, onEnded restarts it
-  save(); renderQueue(); renderGrid();
+  saveNext(); qChanged();
   play(pad, true, false, { from: a, ms: Math.max(300, left * 1000) });
 }
-setInterval(() => { try { xfCheck(); } catch (e) { console.error('xf', e); } }, 200);
 
 // Song start mode: false = each song's cue point (default), true = always from 0:00. Device-only, like crossfade.
 let fromTop = false; try { fromTop = localStorage.getItem('rd.top') === '1'; } catch (e) {}
@@ -1046,7 +1156,7 @@ async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   if (!pad.layer && !isTest) {
     stopAll(250, blend ? [a, blend.from] : a);
     const b = bankOf(pad.id);
-    if (b) { lastBankId = b.id; if (b.shuffle) { S.shLast = pad.id; shMark(pad.id); S.shUp = (S.shUp || []).filter(x => x !== pad.id); shFill(); save(); renderQueue(); } }
+    if (b) { lastBankId = b.id; if (b.shuffle) { S.shLast = pad.id; shMark(pad.id); S.shUp = (S.shUp || []).filter(x => x !== pad.id); shFill(); saveLocal(); renderQueue(); } }   // shuffle history is device-only: no library sync
   }
   clearInterval(a._fade); a._used = Date.now(); a._xf = false;
   a._st = 0;
@@ -1071,8 +1181,12 @@ function onEnded(a) {
   refresh();
 }
 // Pops the next song: the cued queue first, then the shuffle bank's pre-picked list. null = nothing cued.
+let tookQ = false;   // whether the last takeNext() changed the cued queue (synced) or only the shuffle picks (device-only)
+const saveNext = () => { if (tookQ) save(); else saveLocal(); };
 function takeNext(arg) {
+  tookQ = false;
   while (S.queue.length) {
+    tookQ = true;
     const pad = findPad(S.queue.shift());
     if (pad && pad.fileId) return pad;
   }
@@ -1085,7 +1199,7 @@ function takeNext(arg) {
 }
 function next(arg, manual) {
   const cur = current, pad = takeNext(arg);
-  save(); renderQueue(); renderGrid();
+  saveNext(); qChanged();
   if (!pad) { toast('Nothing cued'); return; }
   if (manual && nxBlend && xfSec && blendable(cur) && pad.id !== cur._pad.id) { cur._xf = true; play(pad, true, false, { from: cur, ms: xfSec * 1000 }); return; }
   stopAll(400); play(pad, true);
@@ -1226,8 +1340,11 @@ function shFill() {
 
 /* ---------- wake lock + media session ---------- */
 let wl = null;
+// scrMode: 'play' = hold the screen on while playing and for 20 minutes after; 'always' = never let go. Device-only.
+let scrMode = 'play'; try { if (localStorage.getItem('rd.scr') === 'always') scrMode = 'always'; } catch (e) {}
 async function keepAwake() { try { if (!wl && 'wakeLock' in navigator) { wl = await navigator.wakeLock.request('screen'); wl.onrelease = () => { wl = null; }; } } catch (e) {} }
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && active.size) keepAwake(); });
+function releaseWake() { idleT = null; if (wl && !active.size && scrMode === 'play') { try { wl.release(); } catch (e) {} wl = null; } }
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && (active.size || (scrMode === 'always' && current))) keepAwake(); });
 // Media Session = the lock-screen / notification player on Android. Keeps playback controllable and alive in the background.
 function setMedia(pad) {
   if (!('mediaSession' in navigator)) return;
@@ -1289,7 +1406,7 @@ function renderTabs() {
     if (b.shuffle) el.insertAdjacentHTML('beforeend', ic('shuffle', 14));
     if (editing && i === S.bank) el.insertAdjacentHTML('beforeend', ic('pencil', 14));
     if (i === S.bank) el.classList.add('on');
-    el.onclick = () => { if (bhFired) { bhFired = false; return; } setQView(false); if (i === S.bank && editing) return openBank(b); S.bank = i; saveLocal(); warm(b); render(); };
+    el.onclick = () => { if (bhFired) { bhFired = false; return; } if (i === S.bank && editing) return openBank(b); S.bank = i; saveLocal(); warm(b); render(); };
     bindBankHold(el, b);
     t.appendChild(el);
   });
@@ -1326,8 +1443,12 @@ function padEl(p, b, foreign) {
   if (p.energy) r2.insertAdjacentHTML('beforeend', '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>');
   if (!m.children.length) m.remove();
   if (eSel(b).length && p.fileId && !eOk(b, p)) el.classList.add('dimE');
-  const qi = S.queue.indexOf(p.id);
-  if (qi >= 0) { const s = document.createElement('span'); s.className = 'cue'; s.textContent = qi + 1; s.title = 'Up next #' + (qi + 1); r2.insertBefore(s, r2.firstChild); }
+  if (p.fileId && !editing) {   // + Up Next: one tap to cue; when cued it shows the place in line, and tapping it takes it back out
+    const qa = document.createElement('span'); qa.className = 'qa'; qa.setAttribute('role', 'button'); paintQa(qa, p.id);
+    qa.onpointerdown = e => e.stopPropagation();
+    qa.onclick = e => { e.stopPropagation(); if (pickGoal) { setGoal(p); closePick(); return; } cueToggle(p); };
+    el.appendChild(qa);
+  }
 
   let lpTimer = null, lpFired = false, lpX = 0, lpY = 0;
   const lpCancel = () => { clearTimeout(lpTimer); lpTimer = null; };
@@ -1361,7 +1482,7 @@ function padEl(p, b, foreign) {
     R.onclick = e => { e.stopPropagation(); deletePad(p); };
     el.addEventListener('pointerdown', e => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
-      if (e.target.closest('.sa,.grip')) return;
+      if (e.target.closest('.sa,.grip,.qa')) return;
       if (swOpen && swOpen !== swClose) swOpen();
       x0 = e.clientX; y0 = e.clientY; st = 'wait'; base = swOpen === swClose ? -OPEN : 0; ready = false;
     });
@@ -1382,7 +1503,7 @@ function padEl(p, b, foreign) {
         S.queue.push(p.id); save();
         L.classList.add('done'); L.lastChild.textContent = 'Added #' + S.queue.length; L.firstChild.innerHTML = ic('listPlus', 20);
         setX(0); toast('Cued #' + S.queue.length + ': ' + p.label);
-        setTimeout(() => { renderQueue(); renderGrid(); }, 450);
+        setTimeout(qChanged, 450);
       } else if (dx < -OPEN / 2) { setX(-OPEN); swOpen = swClose; }
       else swClose();
     };
@@ -1470,10 +1591,20 @@ function renderGrid() {
   }
   refresh();
 }
+// Phones: Up Next is a sheet that stays on screen at one of three heights (peek / half / full) and keeps its height when
+// you switch banks. Tablets and desktop: a side panel. qView = pulled up past peek. The height is saved on this device.
 let qView = false, qDrag = false;
 const wide = matchMedia('(min-width:900px)');
-const qOpen = () => qView || wide.matches;
-function setQView(on) { if (on) setMore(false); qView = on; if (!on) shWant = SH_PAGE; document.body.classList.toggle('qv', on); $('#mQueue').classList.toggle('on', on); if (on) renderQueue(); }
+const qOpen = () => true;
+const QH = ['peek', 'half', 'full'];
+let qH = 'peek'; try { const v = localStorage.getItem('rd.qh'); if (QH.includes(v)) qH = v; } catch (e) {}
+function setQH(h) {
+  qH = h; qView = h !== 'peek'; if (!qView) shWant = SH_PAGE;
+  document.body.dataset.q = h; $('#mQueue').classList.toggle('on', qView);
+  try { localStorage.setItem('rd.qh', h); } catch (e) {}
+}
+function setQView(on) { if (on) setMore(false); if (on !== qView) setQH(on ? 'half' : 'peek'); }
+setQH(qH);
 wide.addEventListener && wide.addEventListener('change', () => renderQueue());
 // Rows with a drag handle (reorder), swipe-left (delete) and tap (play now). o: {onPlay, onDelete, onMove, extra:[{txt, fn}]}
 function qRows(ul, ids, o) {
@@ -1534,8 +1665,23 @@ function qRows(ul, ids, o) {
   });
 }
 const moveIn = (arr, from, to) => { arr.splice(to, 0, arr.splice(from, 1)[0]); };
+function paintQa(qa, id) {
+  const qi = S.queue.indexOf(id);
+  qa.classList.toggle('in', qi >= 0);
+  qa.setAttribute('aria-label', qi >= 0 ? 'Up Next #' + (qi + 1) + ', tap to remove' : 'Add to Up Next');
+  qa.innerHTML = qi >= 0 ? '#' + (qi + 1) : ic('plus', 17);
+}
+// Queue changed but the songs didn't: patch the + / #n badges in place instead of rebuilding every song tile.
+function qChanged() { renderQueue(); document.querySelectorAll('#grid .pad[data-id] .qa').forEach(qa => paintQa(qa, qa.parentNode.dataset.id)); }
+function cueToggle(p) {
+  const i = S.queue.indexOf(p.id);
+  if (i < 0) { S.queue.push(p.id); save(); qChanged(); toast('Cued #' + S.queue.length + ': ' + p.label); return; }
+  S.queue.splice(i, 1); save(); qChanged();
+  toast('Removed from Up Next: ' + p.label, () => { S.queue.splice(Math.min(i, S.queue.length), 0, p.id); save(); qChanged(); });
+}
 function playNow(p) { stopAll(300); play(p, true); }
 function renderQueue() {
+  showGoal(); put($('#qN'), S.queue.length ? '· ' + S.queue.length : '');
   for (const qc of [$('#qCount')]) { qc.textContent = S.queue.length; qc.hidden = !S.queue.length; }
   $('#mShuffle').setAttribute('aria-checked', !!curBank().shuffle);
   shFill();
@@ -1546,30 +1692,39 @@ function renderQueue() {
   const ql = $('#qlist'); ql.innerHTML = '';
   qRows(ql, S.queue, {
     delTxt: 'Remove',
-    onPlay: (i, id, p) => { S.queue.splice(i, 1); save(); playNow(p); renderQueue(); renderGrid(); },
-    onDelete: i => { S.queue.splice(i, 1); save(); renderQueue(); renderGrid(); },
-    onMove: (from, to) => { moveIn(S.queue, from, to); save(); renderGrid(); }
+    onPlay: (i, id, p) => { S.queue.splice(i, 1); save(); playNow(p); qChanged(); },
+    onDelete: (i, id, p) => { S.queue.splice(i, 1); save(); qChanged(); toast('Removed: ' + p.label, () => { S.queue.splice(Math.min(i, S.queue.length), 0, id); save(); qChanged(); }); },
+    onMove: (from, to) => { moveIn(S.queue, from, to); save(); qChanged(); }
   });
   renderShuffle();
 }
 function renderShuffle() {
   const g = shGroup(), b = curBank(), lead = g[0] || b;
-  $('#shTitle').innerHTML = '<i class="dot" style="--k:' + bankRgb(lead) + '"></i>'; $('#shTitle').append('Shuffle · ' + (g.length ? g.map(x => x.name).join(' + ') : b.name));
-  $('#shToggle').setAttribute('aria-checked', !!b.shuffle); $('#shToggle').setAttribute('aria-label', 'Shuffle ' + b.name);
-  $('#shToggle').onclick = () => toggleShuffle(b);
+  $('#shTitle').innerHTML = '<i class="dot" style="--k:' + bankRgb(lead) + '"></i>'; $('#shTitle').append(g.length ? 'Mixing in' : 'Shuffle');
+  // one chip per bank: tap to mix it into the shuffle (or take it out); the ⚡ chip sets the energy filter for the bank you're viewing
+  const mix = $('#mix'), ec = $('#eChip');
+  mix.querySelectorAll('.chip').forEach(x => x.remove());
+  S.banks.filter(x => x.pads.some(p => p.fileId)).forEach(x => {
+    const c = document.createElement('button'); c.className = 'chip' + (x.shuffle ? ' on' : ''); c.style.setProperty('--tk', bankRgb(x));
+    c.setAttribute('aria-pressed', !!x.shuffle); c.setAttribute('aria-label', (x.shuffle ? 'Stop mixing in ' : 'Mix in ') + x.name);
+    if (x.shuffle) c.insertAdjacentHTML('beforeend', ic('shuffle', 13));
+    if (x.icon) { const ie = document.createElement('span'); ie.className = 'bi'; ie.textContent = x.icon; c.append(ie); }
+    c.append(x.name); c.onclick = () => toggleShuffle(x);
+    mix.insertBefore(c, ec);
+  });
   const ul = $('#shlist'); ul.innerHTML = '';
-  if (!g.length) { if (b.shuffle) { const li = document.createElement('li'); li.innerHTML = '<span class="hint">No songs available to shuffle in this bank.</span>'; ul.appendChild(li); } return; }
+  if (!g.length) { const li = document.createElement('li'); li.innerHTML = '<span class="hint">' + (b.shuffle ? 'No songs available to shuffle in this bank.' : 'Tap a bank above to shuffle it. Its songs play after Up Next runs out.') + '</span>'; ul.appendChild(li); return; }
   qRows(ul, S.shUp, {
     delTxt: 'Skip',
     onPlay: (i, id, p) => playNow(p),
-    onDelete: (i, id, p) => { S.shUp.splice(i, 1); toast('Removed from queue: ' + p.label); shFill(); save(); renderQueue(); },
-    onMove: (from, to) => { moveIn(S.shUp, from, to); save(); }
+    onDelete: (i, id, p) => { S.shUp.splice(i, 1); shFill(); saveLocal(); renderQueue(); toast('Skipped: ' + p.label, () => { S.shUp = S.shUp.filter(x => x !== id); S.shUp.splice(Math.min(i, S.shUp.length), 0, id); saveLocal(); renderQueue(); }); },
+    onMove: (from, to) => { moveIn(S.shUp, from, to); saveLocal(); }
   });
   shMoreObs.unobserve($('#shMore')); shMoreObs.observe($('#shMore'));  // re-arm so it fires again if the end is still in view
 }
 const shMoreObs = new IntersectionObserver(es => {
   if (!es.some(e => e.isIntersecting) || !shOn() || qDrag) return;
-  shWant += SH_PAGE; shFill(); save(); renderQueue();
+  shWant += SH_PAGE; shFill(); saveLocal(); renderQueue();
 });
 function toggleShuffle(b) {
   b.shuffle = !b.shuffle; S.shUp = []; shFill();
@@ -1605,20 +1760,43 @@ function refresh() {
   sb.innerHTML = paused ? ic('play', 20) + 'Play' : ic('stop', 20) + 'Stop';
   sb.classList.toggle('idle', !current);
   $('#bar').classList.toggle('can', !!(current && current.duration));
+  renderDkMore();
+  syncClock();
 }
+// Progress display. Writes only what changed: an unchanged write still costs a style/layout pass.
+const put = (el, v) => { if (el._v !== v) { el._v = v; el.textContent = v; } };
+const putW = (el, prop, v) => { if (el['_' + prop] !== v) { el['_' + prop] = v; el.style.setProperty(prop, v); } };
 function tick() {
-  const a = current;
+  const a = current, bi = $('#bar i');
   if (a && a.duration) {
-    const pct = a.currentTime / a.duration * 100;
-    $('#bar i').style.width = pct + '%';
-    $('#tCur').textContent = fmt(a.currentTime);
-    $('#npTime').textContent = a.loop ? 'loop' : '-' + fmt(a.duration - a.currentTime);
-    const lim = limitLeft(a); $('#npLimit').textContent = lim === null ? '' : 'skip ' + fmt(lim); nxTick(lim);
-    if (curEl) curEl.style.setProperty('--prog', pct + '%');
-  } else { $('#bar i').style.width = '0'; $('#tCur').textContent = ''; $('#npTime').textContent = ''; $('#npLimit').textContent = ''; nxTick(null); }
-  requestAnimationFrame(safeTick);
+    const pct = (Math.round(a.currentTime / a.duration * 1000) / 10) + '%';
+    putW(bi, 'width', pct);
+    put($('#tCur'), fmt(a.currentTime));
+    put($('#npTime'), a.loop ? 'loop' : '-' + fmt(a.duration - a.currentTime));
+    const lim = limitLeft(a); put($('#npLimit'), lim === null ? '' : 'skip ' + fmt(lim)); nxTick(lim);
+    if (curEl) putW(curEl, '--prog', pct);
+  } else { putW(bi, 'width', '0%'); put($('#tCur'), ''); put($('#npTime'), ''); put($('#npLimit'), ''); nxTick(null); }
+  cueMark();
 }
-function safeTick() { try { tick(); } catch (e) { console.error('tick', e); requestAnimationFrame(safeTick); } }
+// One clock for everything time-based (progress, crossfade, time limit). It runs only while audio is playing; when nothing
+// plays the app does no periodic work at all. Background tabs throttle it, which the time-based fades already allow for.
+let clock = null, idleT = null;
+function clockRun() {
+  try { xfCheck(); } catch (e) { console.error('xf', e); }
+  try { mxCheck(); } catch (e) { console.error('mx', e); }
+  if (!document.hidden) try { tick(); } catch (e) { console.error('tick', e); }
+}
+function syncClock() {
+  if (active.size) {
+    if (!clock) clock = setInterval(clockRun, 250);
+    clearTimeout(idleT); idleT = null;
+  } else {
+    if (clock) { clearInterval(clock); clock = null; }
+    if (!idleT && scrMode === 'play') idleT = setTimeout(releaseWake, 20 * 60e3);   // 20 min with nothing playing: let the screen sleep
+  }
+  try { tick(); } catch (e) { console.error('tick', e); }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) try { tick(); } catch (e) {} });
 
 /* ---------- pad menu (long-press) ---------- */
 // Cued songs go to the end of the queue, which always plays before shuffle picks.
@@ -1660,7 +1838,8 @@ function openPadMenu(p, el) {
   const m = document.createElement('div'); m.id = 'padMenu'; m.className = 'glass';
   const add = (icon, txt, fn) => { const b = document.createElement('button'); b.innerHTML = ic(icon, 20); b.append(txt); b.onclick = () => { closePadMenu(); fn(); }; m.appendChild(b); };
   const title = document.createElement('div'); title.className = 'mt'; title.textContent = p.label || '(unnamed)'; m.appendChild(title);
-  if (p.fileId) add('listPlus', 'Add to Up Next', () => { S.queue.push(p.id); save(); renderQueue(); renderGrid(); toast('Cued #' + S.queue.length + ': ' + p.label); });
+  if (p.fileId) add('listPlus', 'Add to Up Next', () => { S.queue.push(p.id); save(); qChanged(); toast('Cued #' + S.queue.length + ': ' + p.label); });
+  if (p.fileId) add('play', p.id === goalId ? 'Goal song ✓ (tap to clear)' : 'Set as goal song', () => setGoal(p.id === goalId ? null : p));
   if (p.fileId && p.start > 0) {
     if (fromTop) add('back', 'Play from cue point', () => play(p, false, 'cue'));
     else add('back', 'Play from start', () => play(p, false, true));
@@ -1702,7 +1881,8 @@ function copyPad(p, bank) {
 /* ---------- interactions ---------- */
 function padTap(p) {
   if (editing) return openEditor(p);
-  if (mode === 'queue') { S.queue.push(p.id); save(); renderQueue(); renderGrid(); toast('Cued #' + S.queue.length + ': ' + p.label); return; }
+  if (pickGoal) { if (p.fileId) { setGoal(p); closePick(); } else toast('That song has no audio'); return; }
+  if (mode === 'queue') { cueToggle(p); return; }
   play(p);
 }
 document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
@@ -1710,7 +1890,7 @@ document.querySelectorAll('#mode button').forEach(b => b.onclick = () => {
   document.body.classList.toggle('cue', mode === 'queue'); renderBankBar();
   toast(mode === 'queue' ? 'Cue mode: taps add to Up Next' : 'Play mode');
 });
-function setSide(on) { document.body.classList.toggle('side', on); $('#side').inert = !on; if (on) { setMore(false); setQView(false); } }
+function setSide(on) { document.body.classList.toggle('side', on); $('#side').inert = !on; if (on) { setMore(false); setNxMenu(false); } }
 function setMore(on) { if (on) setNxMenu(false); $('#moreMenu').hidden = !on; $('#npTap').classList.toggle('on', on); $('#npTap').setAttribute('aria-expanded', on); }
 function setEditing(on) {
   setQView(false); editing = on; document.body.classList.toggle('edit', on);
@@ -1718,12 +1898,11 @@ function setEditing(on) {
 }
 $('#menuBtn').onclick = () => setSide(true);
 $('#sideClose').onclick = $('#scrim').onclick = () => setSide(false);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { setSide(false); setMore(false); setNxMenu(false); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { setSide(false); setMore(false); setNxMenu(false); closePick(); if ($('#nt').open && !$('#rf').open) $('#nt').close(); } });
 $('#editBtn').onclick = () => { setSide(false); setEditing(!editing); };
 $('#doneBtn').onclick = () => setEditing(false);
 $('#addBtn').onclick = () => { setSide(false); openEditor(null); };
 setSide(false);
-$('#qClose').onclick = () => setQView(false);
 function setView(v) {
   view = v; try { localStorage.setItem('rd.view', v); } catch (e) {}
   document.body.classList.toggle('list', v === 'list');
@@ -1743,20 +1922,30 @@ $('#mRestart').onclick = () => {
 $('#mEdit').onclick = () => { setMore(false); const p = current && current._pad && findPad(current._pad.id); if (p) openEditor(p); };
 $('#stopBtn').onclick = () => { if (current && current.paused && !active.has(current)) resumeCurrent(); else pauseCurrent(); };
 // tapping the song (art + title) opens the options menu; play/stop lives on the Stop/Play button
-// phones: swipe up on the dock opens Up Next, swipe down on the open sheet closes it
+// swipe up / down on the player expands / compacts it; the queue sheet's top bar drags (or taps) between its heights;
+// swiping down on the sheet's list when it's scrolled to the top drops it a size
 (() => {
   let t0 = null;
   const start = e => { t0 = e.touches.length === 1 ? { x: e.touches[0].clientX, y: e.touches[0].clientY, el: e.target } : null; };
   const dy = e => { const t = e.changedTouches[0]; return t0 && Math.abs(t.clientY - t0.y) > Math.abs(t.clientX - t0.x) ? t.clientY - t0.y : 0; };
   $('#dock').addEventListener('touchstart', start, { passive: true });
   $('#dock').addEventListener('touchend', e => {
-    const d = dy(e); if (!t0 || wide.matches || t0.el.closest('#bar,#moreMenu,#npEn')) return;
-    if (d < -40 && !qView) { setQView(true); }
+    const d = dy(e); if (!t0 || t0.el.closest('#bar,#moreMenu,#npEn,#nxMenu,#dkMore input')) return;
+    if (d < -40) setDkx(true); else if (d > 40) setDkx(false);
   }, { passive: true });
+  const step = n => setQH(QH[Math.max(0, Math.min(2, QH.indexOf(qH) + n))]);
+  const top = $('#qTop'); let p0 = null;
+  top.onpointerdown = e => { if (wide.matches || e.target.closest('button')) return; p0 = e.clientY; top.setPointerCapture(e.pointerId); };
+  top.onpointerup = e => {
+    if (p0 === null) return; const d = e.clientY - p0; p0 = null;
+    if (d < -25) step(d < -200 ? 2 : 1); else if (d > 25) step(d > 200 ? -2 : -1);
+    else setQH(qH === 'peek' ? 'half' : 'peek');   // tap: toggle between peek and half
+  };
+  top.onpointercancel = () => { p0 = null; };
   $('#qpanel').addEventListener('touchstart', start, { passive: true });
   $('#qpanel').addEventListener('touchend', e => {
-    const d = dy(e); if (!t0 || wide.matches || qDrag || t0.el.closest('.grip')) return;
-    if (d > 60 && $('#qpanel').scrollTop <= 0) setQView(false);
+    const d = dy(e); if (!t0 || wide.matches || qDrag || t0.el.closest('.grip,#qTop')) return;
+    if (d > 60 && $('#qpanel').scrollTop <= 0) step(-1);
   }, { passive: true });
 })();
 $('#npTap').onclick = () => setMore($('#moreMenu').hidden);
@@ -1785,17 +1974,18 @@ $('#npTap').onkeydown = e => { if ((e.key === 'Enter' || e.key === ' ') && e.tar
   bar.onpointerup = bar.onpointercancel = () => { drag = false; };
 })();
 /* search */
+// The search field is always in the header; clearing it (✕ or Escape) shows the bank again.
 function setSearch(on) {
-  $('#searchRow').classList.toggle('show', on); $('#searchBtn').classList.toggle('on', on);
-  if (on) $('#searchIn').focus(); else { $('#searchIn').value = ''; query = ''; renderGrid(); }
+  if (on) { $('#searchIn').focus(); return; }
+  $('#searchIn').value = ''; $('#searchX').hidden = true; $('#searchIn').blur();
+  if (query) { query = ''; renderGrid(); }
 }
-$('#searchBtn').onclick = () => setSearch(!$('#searchRow').classList.contains('show'));
-$('#searchX').onclick = () => setSearch(false);
-$('#searchIn').oninput = e => { query = e.target.value; renderGrid(); };
+$('#searchX').onclick = e => { e.preventDefault(); setSearch(false); };
+$('#searchIn').oninput = e => { query = e.target.value; $('#searchX').hidden = !query; renderGrid(); };
 $('#searchIn').onkeydown = e => { if (e.key === 'Enter') e.target.blur(); if (e.key === 'Escape') setSearch(false); };
 $('#mQueue').onclick = () => { setMore(false); setQView(!qView); };
 $('#mShuffle').onclick = () => toggleShuffle(curBank());
-$('#qClear').onclick = () => { S.queue = []; save(); renderQueue(); renderGrid(); };
+$('#qClear').onclick = () => { if (!S.queue.length) return; const old = S.queue; S.queue = []; save(); qChanged(); toast('Up Next cleared', () => { S.queue = old.concat(S.queue); save(); qChanged(); }); };
 $('#vol').oninput = e => { S.master = +e.target.value; active.forEach(a => { if (!a._fade) setVol(a, S.master); }); };
 $('#vol').onchange = saveLocal;
 const showOut = () => { $('#outVal').textContent = (outDb > 0 ? '+' : '') + outDb + ' dB'; };
@@ -1942,6 +2132,84 @@ function setNxMenu(on) { $('#nxMenu').hidden = !on; $('#nextBtn').setAttribute('
   nb.onclick = () => { if (held) { held = false; return; } next(false, true); };
 }
 nxRefresh();
+
+/* ---------- goal song: Hold Next → Goal song plays it from its start point, using the Next fade setting ---------- */
+const fmtS = t => { const f = Math.round((t || 0) * 10) / 10, d = Math.round(f * 10) % 10; return fmt(Math.floor(f)) + (d ? '.' + d : ''); };
+const goalPad = () => goalId ? findPad(goalId) : null;
+function showGoal() {
+  const p = goalPad();
+  put($('#nxGoalSub'), p ? p.label + (p.start ? ' · from ' + fmtS(p.start) : '') : 'Not set · tap to choose');
+  put($('#goalTxt'), p ? p.label : 'Not set');
+}
+function setGoal(p) {
+  goalId = p ? p.id : null;
+  try { if (goalId) localStorage.setItem('rd.goal', goalId); else localStorage.removeItem('rd.goal'); } catch (e) {}
+  showGoal();
+  if (p) { audioFor(p); toast('Goal song: ' + p.label); } else toast('Goal song cleared');
+}
+// choosing: tap Goal song (when none is set), "Change goal song…" or Settings → Goal song, then tap any song
+let pickGoal = false;
+function startPick() { setNxMenu(false); setSide(false); setMore(false); pickGoal = true; document.body.classList.add('pick'); toast('Tap a song to make it the goal song'); }
+function closePick() { if (!pickGoal) return false; pickGoal = false; document.body.classList.remove('pick'); return true; }
+function playGoal(p) {
+  const cur = current;
+  if (nxBlend && xfSec && blendable(cur) && cur._pad.id !== p.id) { cur._xf = true; play(p, false, 'cue', { from: cur, ms: xfSec * 1000 }); }
+  else { stopAll(400); play(p, false, 'cue'); }
+}
+$('#nxGoal').onclick = () => { const p = goalPad(); if (!p) return startPick(); setNxMenu(false); playGoal(p); };
+$('#nxGoalPick').onclick = startPick;
+$('#goalBtn').onclick = startPick;
+
+/* ---------- expanded player: start point tools + one-tap energy ---------- */
+function setDkx(on) {
+  document.body.classList.toggle('dkx', on); $('#dkGrab').setAttribute('aria-expanded', on); $('#dkGrab').setAttribute('aria-label', on ? 'Compact player' : 'Expand player');
+  try { localStorage.setItem('rd.dkx', on ? '1' : '0'); } catch (e) {}
+}
+try { setDkx(localStorage.getItem('rd.dkx') === '1'); } catch (e) { setDkx(false); }
+$('#dkGrab').onclick = () => setDkx(!document.body.classList.contains('dkx'));
+const livePad = () => current && current._pad && current._pad.id !== '__test' ? findPad(current._pad.id) : null;
+[1, 2, 3, 4, 5].forEach(n => { const b = document.createElement('button'); b.textContent = n; b.setAttribute('aria-label', 'Energy ' + n); b.onclick = () => { const p = livePad(); if (p) setEnergy(p, n); }; $('#dkE').appendChild(b); });
+function renderDkMore() {
+  const p = livePad();
+  put($('#cueTxt'), p ? (p.start ? 'starts at ' + fmtS(p.start) : 'plays from 0:00') : '');
+  $('#dkMore').querySelectorAll('button').forEach(b => { b.disabled = !p; });
+  [...$('#dkE').children].forEach((b, i) => b.classList.toggle('on', !!p && p.energy === i + 1));
+}
+function cueMark() {
+  const a = current, p = livePad(), m = $('#barCue');
+  const at = p && a && a.duration && p.start > 0 && p.start < a.duration ? (Math.round(p.start / a.duration * 1000) / 10) + '%' : '';
+  m.classList.toggle('on', !!at); if (at) putW(m, 'left', at);
+}
+function setStart(p, t) {
+  const a = current, max = a && isFinite(a.duration) ? Math.max(0, a.duration - 1) : Infinity;
+  p.start = Math.round(Math.max(0, Math.min(max, t)) * 10) / 10;
+  if (!p.start) delete p.start;
+  save(); renderGrid(); showGoal();
+}
+$('#cueSet').onclick = () => { const p = livePad(); if (!p || !current) return; setStart(p, current.currentTime); current._st = p.start || 0; toast('Start set at ' + fmtS(p.start || 0) + ': ' + p.label); };
+const nudge = d => () => {
+  const p = livePad(); if (!p || !current) return;
+  setStart(p, (p.start || 0) + d);
+  try { current.currentTime = p.start || 0; } catch (e) {}
+  tick();
+};
+$('#cueL').onclick = nudge(-1); $('#cueR').onclick = nudge(1);
+$('#cueGo').onclick = () => {
+  const p = livePad(), a = current; if (!p || !a) return;
+  clearInterval(a._fade); setVol(a, S.master);
+  try { a.currentTime = p.start || 0; } catch (e) {}
+  if (a.paused) resumeCurrent(); else tick();
+};
+
+/* keep screen on: while playing (sleeps after 20 min idle) or always */
+function showScr() { document.querySelectorAll('#scrMode button').forEach(x => x.classList.toggle('on', x.dataset.s === scrMode)); }
+document.querySelectorAll('#scrMode button').forEach(b => b.onclick = () => {
+  scrMode = b.dataset.s; try { localStorage.setItem('rd.scr', scrMode); } catch (e) {}
+  showScr(); clearTimeout(idleT); idleT = null;
+  if (scrMode === 'always' && current) keepAwake();
+  syncClock();
+});
+showScr();
 
 /* bank dialog */
 let bankEd = null, pendingColor = PALETTE[5], pendingShow = 'name';
@@ -2180,8 +2448,10 @@ $('#rfClose').onclick = () => $('#rf').close();
     return out + (inList ? '</ul>' : '');
   };
   const info = () => { $('#ntInfo').textContent = T.value.trim() ? T.value.length + ' characters · saved on this device' : 'Saved on this device'; };
-  const store = () => { try { localStorage.setItem(KEY, T.value); } catch (e) {} info(); };
+  const badge = () => $('#ntOpen').classList.toggle('has', !!T.value.trim());
+  const store = () => { try { localStorage.setItem(KEY, T.value); } catch (e) {} info(); badge(); };
   try { T.value = localStorage.getItem(KEY) || ''; } catch (e) {}
+  badge();
   T.oninput = store;
   const setMode = m => {
     document.querySelectorAll('#ntMode button').forEach(x => x.classList.toggle('on', x.dataset.m === m));
@@ -2203,7 +2473,8 @@ $('#rfClose').onclick = () => $('#rf').close();
   $('#ntTb').onclick = e => {
     const b = e.target.closest('button'); if (!b) return;
     const a = b.dataset.a;
-    if (a === 'time') { const d = new Date(); put(d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ', '', ''); T.setSelectionRange(T.selectionEnd, T.selectionEnd); }
+    if (a === 'song') { const cp = current && current._pad && current._pad.id !== '__test' ? current._pad : null; if (!cp) { toast('Nothing playing'); return; } lineStart('♪ ' + cp.label + ' '); }
+    else if (a === 'time') { const d = new Date(); put(d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }) + ' ', '', ''); T.setSelectionRange(T.selectionEnd, T.selectionEnd); }
     else if (a === 'b') put('**', '**', 'bold');
     else if (a === 'i') put('*', '*', 'italic');
     else if (a === 'h') lineStart('# ');
@@ -2215,9 +2486,13 @@ $('#rfClose').onclick = () => $('#rf').close();
     catch (e) { T.hidden = false; V.hidden = true; T.select(); toast('Press copy on the selected text'); }
   };
   armConfirm($('#ntClear'), 'Tap again to clear', () => { T.value = ''; store(); setMode('edit'); T.focus(); toast('Notes cleared'); }, 'Clear');
-  $('#ntBtn').onclick = () => { setSide(false); setMode('edit'); info(); $('#nt').showModal(); };
+  // Notes open as a sheet above the player (not a modal), so Stop / Next / Goal song keep working while you type.
+  const openNotes = () => { setSide(false); setMore(false); setNxMenu(false); setMode('edit'); info(); $('#nt').show(); $('#ntOpen').classList.add('on'); $('#ntOpen').setAttribute('aria-expanded', 'true'); };
+  $('#ntBtn').onclick = openNotes;
+  $('#ntOpen').onclick = () => { if ($('#nt').open) $('#nt').close(); else openNotes(); };
   $('#ntClose').onclick = () => $('#nt').close();
-  $('#nt').addEventListener('close', () => $('#ntClear').resetConfirm && $('#ntClear').resetConfirm());
+  $('#ntRef').onclick = () => $('#rf').showModal();
+  $('#nt').addEventListener('close', () => { $('#ntClear').resetConfirm && $('#ntClear').resetConfirm(); $('#ntOpen').classList.remove('on'); $('#ntOpen').setAttribute('aria-expanded', 'false'); });
 }
 
 /* penalty time helper: when does the player come back (game clock) */
@@ -2536,6 +2811,8 @@ function renderImp() {
 /* ---------- sync with server ---------- */
 // Local-first: IndexedDB is what plays. The server is the shared copy; we reconcile when reachable.
 let syncing = false, syncAgain = false, syncTimer = null, haveCount = 0;
+let filesOk = false;   // true after a full sync left nothing to upload or download; until something changes, a poll only asks the server's revision
+const libDialogOpen = () => !!document.querySelector('dialog[open]:not(#nt):not(#rf)');   // an editor is open: don't swap the library under it
 const setSync = (txt, bad) => {
   const b = $('#syncBtn'), busy = /^[↑↓]/.test(txt), st = bad ? 'bad' : busy ? 'busy' : 'ok';
   b.dataset.s = $('#menuBtn').dataset.s = st;
@@ -2599,6 +2876,11 @@ async function syncNow(manual) {
   if (syncing) { syncAgain = true; return; }
   syncing = true;
   try {
+    // cheap check first: one tiny request, and the full library + file list only when the server has something new
+    if (!manual && !sync.dirty && filesOk && sync.rev !== null) {
+      let r = null; try { r = await (await api('rev')).json(); } catch (e) {}
+      if (r && r.rev === sync.rev) { setSync('✓ Synced'); return; }
+    }
     const srv = await (await api('state')).json();
     const hasPads = banks => banks.some(b => b.pads.length);
     let useServer;
@@ -2609,7 +2891,7 @@ async function syncNow(manual) {
       if (!useServer) sync.dirty = true;
     } else useServer = !sync.dirty && srv.rev !== sync.rev;
 
-    if (useServer && !document.querySelector('dialog[open]')) {
+    if (useServer && !libDialogOpen()) {
       S.banks = srv.state.banks; S.queue = srv.state.queue || [];
       S.bank = Math.max(0, Math.min(S.bank, S.banks.length - 1));
       sync.rev = srv.rev; sync.dirty = false; sync.base = jclone({ banks: S.banks, queue: S.queue });
@@ -2634,7 +2916,7 @@ async function syncNow(manual) {
       const e0 = edits, pushed = jclone({ banks: S.banks, queue: S.queue });
       const res = await fetch('api/state', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...pushed, baseRev: sync.rev === null ? srv.rev : sync.rev }) });
       if (res.status === 409) {                                                     // another device saved first: merge its changes with ours, then push again
-        if (document.querySelector('dialog[open]')) { syncAgain = false; scheduleSync(3000); return; }
+        if (libDialogOpen()) { syncAgain = false; scheduleSync(3000); return; }
         const cur = await res.json();
         const m = mergeLib(sync.base || cur.state, { banks: S.banks, queue: S.queue }, cur.state);
         S.banks = m.banks; S.queue = m.queue;
@@ -2671,6 +2953,7 @@ async function syncNow(manual) {
     for (const id of await idbKeys('files')) if (!keep.has(id) && !fresh.has(id)) idbDel('files', id);
 
     haveCount = ids.filter(id => have.has(id)).length;
+    filesOk = !sync.dirty && haveCount === ids.length;
     setSync('✓ Synced');
     showAuto(); analyzeMissing();
     if (manual) toast('Synced · ' + haveCount + ' song' + (haveCount === 1 ? '' : 's') + ' available offline');
@@ -2700,6 +2983,8 @@ function initBack() {
   addEventListener('popstate', () => {
     document.querySelectorAll('dialog[open]').forEach(d => d.close());
     if (document.body.classList.contains('side')) setSide(false);
+    else if (pickGoal) closePick();
+    else if (document.body.classList.contains('dkx')) setDkx(false);
     else if (qView) setQView(false);
     else if (!$('#moreMenu').hidden) setMore(false);
     else if (!$('#nxMenu').hidden) setNxMenu(false);
@@ -2712,11 +2997,12 @@ function initBack() {
 (async function () {
   try { const st = await idbGet('meta', 'state'); if (st && st.banks) S = st; } catch (e) {}
   try { const sy = await idbGet('meta', 'sync'); if (sy) sync = sy; } catch (e) {}
-  $('#vol').value = S.master; showAuto(); render(); warm(curBank()); safeTick();
+  $('#vol').value = S.master; showAuto(); render(); warm(curBank()); refresh();
   if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--dockH', $('#dock').offsetHeight + 'px')).observe($('#dock'));
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
   syncNow();
-  setInterval(() => { if (document.visibilityState === 'visible') syncNow(); }, 10000);
+  // Poll once a minute, and not at all while music plays (edits made on this device still push right away via save()).
+  setInterval(() => { if (document.visibilityState === 'visible' && !active.size) syncNow(); }, 60000);
   addEventListener('online', () => syncNow());
   document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') { recover(); syncNow(); } });
   addEventListener('pageshow', recover);

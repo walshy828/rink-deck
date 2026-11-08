@@ -352,6 +352,7 @@ async function handleApi(req, res, url) {
   const p = url.pathname;
   if (p.startsWith('/api/yt/')) return handleYt(req, res, p);
   if (p.startsWith('/api/music/')) return handleMusic(req, res, p, url);
+  if (p === '/api/rev' && req.method === 'GET') return send(res, 200, { rev: lib.state ? lib.rev : null });   // cheap poll: clients fetch the full library only when this changes
   if (p === '/api/state') {
     if (req.method === 'GET') return send(res, 200, lib);
     if (req.method === 'PUT') {
