@@ -182,12 +182,19 @@ body.cue .pad:not(.plus):not(.empty){border-style:dashed;border-color:rgba(255,2
 
 /* list view */
 body.list #grid{grid-template-columns:1fr;grid-auto-rows:auto;gap:6px}
-body.list .pad{flex-direction:row;align-items:center;min-height:56px;border-radius:16px;padding:6px 12px;gap:10px}
-body.list .pad .r1{flex:1}
-body.list .pad .r2{flex:none;max-width:48%}
-body.list .pad .ttl{font-size:16px;-webkit-line-clamp:1}
+/* list rows: the title gets the full width (wrapping to 2 lines); cue point / loop / energy sit underneath it, and only + (Up Next) stays on the right */
+body.list .pad{display:grid;grid-template-columns:minmax(0,1fr) auto auto;column-gap:8px;row-gap:0;align-items:center;align-content:center;min-height:56px;border-radius:16px;padding:7px 10px 7px 12px}
+body.list .pad .r1{grid-column:1;grid-row:1}
+body.list .pad .r2{grid-column:1;grid-row:2;max-width:none;min-height:0;margin-top:3px;padding-left:37px}
+body.list .pad .r2 .en{margin-left:auto}
+body.list .pad .ttl{font-size:16px;-webkit-line-clamp:3}
+/* list view: a cue point is a small amber dot on the play icon (instead of a "0:42" tag); faded when songs are set to play from the top */
+body.list .pad .pi{position:relative}
+body.list .pad.hascue .pi::after{content:'';position:absolute;top:-1px;right:-1px;width:9px;height:9px;border-radius:50%;background:#ffb547;box-shadow:0 0 0 2px rgba(0,0,0,.45)}
+body.top.list .pad.hascue .pi::after{opacity:.35}
 body.list .pad .prog{height:3px}
-body.list .pad .grip{order:99;margin:0 -6px 0 0}
+body.list .pad .qa{grid-column:2;grid-row:1/span 2}
+body.list .pad .grip{grid-column:3;grid-row:1/span 2;margin:0 -4px 0 0}
 body.list .pad.plus{min-height:48px;flex-direction:row;justify-content:center}
 .vseg{display:flex;padding:3px;border-radius:14px;background:rgba(0,0,0,.35);border:1px solid var(--line)}
 .vseg button{border:0;background:transparent;color:var(--dim);width:34px;height:30px;border-radius:11px;display:flex;align-items:center;justify-content:center;padding:0}
@@ -517,7 +524,9 @@ dialog::backdrop{background:rgba(0,0,0,.6)}
 .pad .qa:active{transform:scale(.9)}
 .pad .qa.in{background:var(--cue);border-color:var(--cue)}
 .pad:has(.qa) .r1{padding-right:34px}
-body.list .pad .qa{position:static;order:98;flex:none}
+body.list .pad .qa{position:relative;top:auto;right:auto;flex:none;min-width:28px;height:28px;padding:0 6px;border-radius:14px;font-size:12px}
+/* smaller badge, same easy tap: an invisible ring extends the hit area */
+body.list .pad .qa::before{content:'';position:absolute;inset:-10px -8px}
 body.list .pad:has(.qa) .r1{padding-right:0}
 body.pick .pad:not(.plus):not(.empty){outline:2px dashed #ffd60a;outline-offset:-3px}
 
@@ -1439,7 +1448,6 @@ function renderBankBar() {
   const b = curBank(), n = b.pads.length;
   document.body.style.setProperty('--k', bankRgb(b));
   const hint = editing ? 'Drag ⠿ to reorder or move'
-    : view === 'list' && mode !== 'queue' ? 'Drag ⠿ to reorder'
     : mode === 'queue' ? 'Taps add to Up Next' : 'Hold a song for options';
   $('#bkInfo').innerHTML = '<div class="l1"><span class="kt"><i></i><b></b></span><span>' + n + (n === 1 ? ' song' : ' songs') + '</span></div><div class="l2"></div>';
   $('#bkInfo .kt b').textContent = (b.icon ? b.icon + ' ' : '') + b.name; $('#bkInfo .l2').textContent = hint;
@@ -1448,7 +1456,7 @@ let swOpen = null;   // close function of the song row whose Delete button is sh
 document.addEventListener('pointerdown', e => { if (swOpen && !e.target.closest('.pad.sw')) swOpen(); }, true);
 function padEl(p, b, foreign) {
   const el = document.createElement('button'); el.className = 'pad'; el.dataset.id = p.id;
-  const grip = (editing || view === 'list') && !foreign;
+  const grip = editing && !foreign;   // reorder lives in Edit mode (or hold a song → Move to top/bottom), keeping play-mode rows free for the title
   const gh = grip ? '<b class="grip" aria-label="Drag to reorder">' + ic('grip', 18) + '</b>' : '', inList = view === 'list';
   el.innerHTML = (inList ? '' : '') +
     '<span class="r1">' + (inList ? '' : gh) + '<span class="pi"><span class="pl">' + ic('play', 13) + '</span><span class="pp">' + ic('plus', 15) + '</span><span class="eq"><i></i><i></i><i></i></span></span><span class="ttl"></span></span><span class="r2"><span class="meta"></span></span><span class="prog"></span>' + (inList ? gh : '');
@@ -1461,9 +1469,9 @@ function padEl(p, b, foreign) {
   else {
     if (p.layer) tag('<em class="fx">' + ic('layers', 12) + 'Layer</em>');
     if (p.loop) tag('<em>' + ic('repeat', 12) + 'Loop</em>');
-    if (p.start) tag('<em class="cuetag">' + ic('back', 12) + fmt(p.start) + '</em>');
+    if (p.start) { if (inList) { el.classList.add('hascue'); el.title = 'Starts at ' + fmt(p.start); } else tag('<em class="cuetag">' + ic('back', 12) + fmt(p.start) + '</em>'); }
   }
-  if (p.energy) r2.insertAdjacentHTML('beforeend', '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>');
+  if (p.energy && (!inList || eSel(b).length)) r2.insertAdjacentHTML('beforeend', '<span class="en" title="Energy ' + p.energy + '">' + [1, 2, 3, 4, 5].map(n => '<i' + (n <= p.energy ? ' class="on"' : '') + '></i>').join('') + '</span>');
   if (!m.children.length) m.remove();
   if (eSel(b).length && p.fileId && !eOk(b, p)) el.classList.add('dimE');
   if (p.fileId && !editing) {   // + Up Next: one tap to cue; when cued it shows the place in line, and tapping it takes it back out
@@ -1699,7 +1707,7 @@ function paintQa(qa, id) {
   const qi = S.queue.indexOf(id);
   qa.classList.toggle('in', qi >= 0);
   qa.setAttribute('aria-label', qi >= 0 ? 'Up Next #' + (qi + 1) + ', tap to remove' : 'Add to Up Next');
-  qa.innerHTML = qi >= 0 ? '#' + (qi + 1) : ic('plus', 17);
+  qa.innerHTML = qi >= 0 ? '#' + (qi + 1) : ic('plus', view === 'list' ? 15 : 17);
 }
 // Queue changed but the songs didn't: patch the + / #n badges in place instead of rebuilding every song tile.
 function qChanged() { renderQueue(); document.querySelectorAll('#grid .pad[data-id] .qa').forEach(qa => paintQa(qa, qa.parentNode.dataset.id)); }
