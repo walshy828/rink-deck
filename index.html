@@ -162,6 +162,7 @@ body.top .cuetag{opacity:.45;text-decoration:line-through}
 .pad.fx{border-style:dashed;border-color:rgba(255,255,255,.5)}
 .pad.empty{border-style:dashed;opacity:.5}
 .pad.dimE{opacity:.3}
+.pad.nodl{border-style:dashed;opacity:.55}
 
 /* play icon left of the title; becomes live bars while playing, + in cue mode */
 .pi{flex:none;width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;color:#fff}
@@ -922,8 +923,10 @@ async function idb(store, mode, fn, fallback) {
   });
 }
 const idbGet = (s, k) => idb(s, 'readonly', o => o.get(k), m => m.get(k));
-const idbPut = (s, k, v) => idb(s, 'readwrite', o => o.put(v, k), m => { m.set(k, v); });
-const idbDel = (s, k) => idb(s, 'readwrite', o => o.delete(k), m => { m.delete(k); });
+// onDev = ids of songs whose audio is stored on this device (null until read at boot), so pads can show what won't play offline.
+let onDev = null;
+const idbPut = (s, k, v) => idb(s, 'readwrite', o => o.put(v, k), m => { m.set(k, v); }).then(r => { if (s === 'files' && onDev) onDev.add(k); return r; });
+const idbDel = (s, k) => idb(s, 'readwrite', o => o.delete(k), m => { m.delete(k); }).then(r => { if (s === 'files' && onDev) onDev.delete(k); return r; });
 const idbKeys = s => idb(s, 'readonly', o => o.getAllKeys(), m => [...m.keys()]);
 
 /* ---------- state ---------- */
@@ -1150,7 +1153,7 @@ function xfCheck() {
 let fromTop = false; try { fromTop = localStorage.getItem('rd.top') === '1'; } catch (e) {}
 async function play(pad, fromQueue = false, fromStart = false, blend = null) {
   const r = await audioFor(pad);
-  if (!r) { toast(pad.fileId ? 'Audio missing' : 'No audio on this pad'); return; }
+  if (!r) { toast(!pad.fileId ? 'No audio on this pad' : onDev && !onDev.has(pad.fileId) ? 'Not downloaded to this device yet · sync while online' : 'Audio missing'); return; }
   const a = r.a;
   const isTest = pad.id === '__test';   // editor preview: leave the real player (music, queue, now-playing) alone
   if (!pad.layer && !isTest) {
@@ -1435,6 +1438,7 @@ function padEl(p, b, foreign) {
   if (p.layer) el.classList.add('fx');
   const m = el.querySelector('.meta'), tag = h => m.insertAdjacentHTML('beforeend', h), r2 = el.querySelector('.r2');
   if (!p.fileId) tag('<em class="warn">No audio</em>');
+  else if (onDev && !onDev.has(p.fileId)) { el.classList.add('nodl'); tag('<em class="warn">' + ic('sync', 12) + 'Not downloaded</em>'); }
   else {
     if (p.layer) tag('<em class="fx">' + ic('layers', 12) + 'Layer</em>');
     if (p.loop) tag('<em>' + ic('repeat', 12) + 'Loop</em>');
@@ -2819,6 +2823,12 @@ const setSync = (txt, bad) => {
   $('#syncTxt').textContent = txt.replace(/^[✓⚠]\s*/, '');
 };
 const fileIdsOf = banks => [...new Set(banks.flatMap(b => b.pads.map(p => p.fileId)).filter(Boolean))];
+// " · 12/14 songs on device" when some songs would not play without a connection, else ''.
+function devNote() {
+  if (!onDev) return '';
+  const ids = fileIdsOf(S.banks), n = ids.filter(id => onDev.has(id)).length;
+  return n < ids.length ? ' · ' + n + '/' + ids.length + ' songs on device' : '';
+}
 function scheduleSync(ms = 800) { clearTimeout(syncTimer); syncTimer = setTimeout(() => syncNow(), ms); }
 async function api(path, opt = {}, ms = 10000) {
   const ctl = new AbortController(), t = setTimeout(() => ctl.abort(), ms);
@@ -2945,7 +2955,7 @@ async function syncNow(manual) {
       }
     };
     await Promise.all([worker(), worker(), worker()]);
-    if (done) warm(curBank());
+    if (done) { warm(curBank()); if (!libDialogOpen()) render(); }   // clear the "Not downloaded" marks, even if the rest failed
     if (fail) throw fail;
 
     // drop local audio nothing references any more
@@ -2954,11 +2964,12 @@ async function syncNow(manual) {
 
     haveCount = ids.filter(id => have.has(id)).length;
     filesOk = !sync.dirty && haveCount === ids.length;
-    setSync('✓ Synced');
+    const note = devNote();
+    setSync('✓ Synced' + note, !!note);
     showAuto(); analyzeMissing();
     if (manual) toast('Synced · ' + haveCount + ' song' + (haveCount === 1 ? '' : 's') + ' available offline');
   } catch (e) {
-    setSync('⚠ Offline', true);
+    setSync('⚠ Offline' + devNote(), true);
     if (manual) toast(sync.dirty ? 'Server unreachable · changes will sync later' : 'Server unreachable · using songs on this device');
   } finally {
     syncing = false;
@@ -2997,6 +3008,7 @@ function initBack() {
 (async function () {
   try { const st = await idbGet('meta', 'state'); if (st && st.banks) S = st; } catch (e) {}
   try { const sy = await idbGet('meta', 'sync'); if (sy) sync = sy; } catch (e) {}
+  try { onDev = new Set(await idbKeys('files')); } catch (e) {}
   $('#vol').value = S.master; showAuto(); render(); warm(curBank()); refresh();
   if (window.ResizeObserver) new ResizeObserver(() => document.documentElement.style.setProperty('--dockH', $('#dock').offsetHeight + 'px')).observe($('#dock'));
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch (e) {}
